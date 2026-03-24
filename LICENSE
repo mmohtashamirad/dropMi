@@ -1,0 +1,127 @@
+Community Non-Commercial Software License (CNSL) v1.0
+
+Copyright (c) 2025 Milad Mohtashamirad
+
+Permission is granted to any person obtaining a copy of this Software to use, copy, modify, and redistribute the Software, subject to the terms and conditions of this License.
+
+1. DEFINITIONS
+
+"Software" means the source code, binaries, documentation, and associated files distributed under this License.
+
+"Commercial Use" means:
+
+    - selling, licensing, sublicensing, leasing, or otherwise distributing the Software for a fee;
+    - incorporating the Software into a product or service that is sold, licensed, leased, or otherwise provided for consideration;
+    - using the Software to provide paid services to third parties;
+    - operating the Software as part of a revenue-generating product, platform, or business activity.
+
+The following are NOT considered Commercial Use:
+
+    - personal use;
+    - educational use;
+    - academic research;
+    - evaluation or testing of the Software by an individual or organization, provided no commercial product or service is offered using the Software.
+
+2. GRANT OF RIGHTS
+
+Subject to compliance with this License, the copyright holder grants you a perpetual, worldwide, non-exclusive, non-transferable, irrevocable license to:
+
+    - use the Software for non-commercial purposes;
+    - copy the Software;
+    - modify the Software;
+    - create derivative works based on the Software;
+    - redistribute the Software and derivative works;
+    - submit contributions to the Software.
+
+The rights granted under this License automatically terminate upon any violation of its terms.
+
+3. REDISTRIBUTION REQUIREMENTS
+
+Any redistribution of the Software, whether modified or unmodified, must:
+
+    - include a copy of this License;
+    - retain all copyright notices;
+    - retain all license notices;
+    - clearly identify any modifications made.
+
+If the Software is modified, the distributor must include a file named CHANGES.md or an equivalent document containing:
+
+    - the date of each modification;
+    - the name or identifier of the person making the modification;
+    - a brief description of the modification.
+
+The modification history must be reasonably accessible to recipients of the modified Software.
+
+4. CONTRIBUTIONS
+
+Contributions are welcome.
+
+By intentionally submitting a contribution to the Software, the contributor agrees that:
+
+    (a) the contribution may be incorporated into the Software;
+
+    (b) the contributor grants the copyright holder a perpetual, worldwide, non-exclusive, irrevocable, sublicensable, royalty-free license to use, reproduce, modify, distribute, relicense, and commercially exploit the contribution;
+
+    (c) the contributor represents that they have the legal right to submit the contribution;
+
+    (d) submission of a contribution does not grant the contributor any commercial rights to the Software.
+
+The copyright holder may require contributors to execute a separate Contributor License Agreement (CLA) before accepting contributions.
+
+5. COMMERCIAL USE RESTRICTION
+
+Commercial Use of the Software is prohibited unless expressly authorized in writing by the copyright holder.
+
+No license for Commercial Use is granted under this License.
+
+Any person or organization wishing to engage in Commercial Use must obtain a separate commercial license from the copyright holder.
+
+6. NO AUTOMATIC COMMERCIAL RIGHTS
+
+No person or organization, including contributors, receives any commercial rights under this License.
+
+Contributors do not acquire any right to commercially exploit the Software solely because they contributed code, documentation, bug fixes, ideas, or other materials.
+
+Commercial rights may only be granted through a separate written agreement executed by the copyright holder.
+
+7. OWNERSHIP
+
+The Software and all associated trademarks, branding, project identity, and goodwill are owned by the copyright holder.
+
+Contributors retain copyright ownership of their individual contributions unless otherwise assigned in writing.
+
+By contributing, contributors grant the rights described in Section 4, including the right for the copyright holder to distribute the Software under commercial licenses.
+
+No contributor acquires any ownership interest in the Software as a whole, nor any right to grant commercial licenses on behalf of the project.
+
+8. NO TRADEMARK LICENSE
+
+This License does not grant permission to use the names, trademarks, service marks, logos, branding, or project identity of the copyright holder except as necessary to identify the origin of the Software.
+
+9. DISCLAIMER OF WARRANTY
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, TITLE, OR NON-INFRINGEMENT.
+
+THE ENTIRE RISK AS TO THE QUALITY AND PERFORMANCE OF THE SOFTWARE IS WITH THE USER.
+
+10. LIMITATION OF LIABILITY
+
+IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT, OR OTHERWISE, ARISING FROM, OUT OF, OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+11. TERMINATION
+
+Any violation of this License immediately terminates the rights granted under this License.
+
+Upon termination, the user must cease all use, distribution, and modification of the Software.
+
+Termination does not affect any commercial license separately granted by the copyright holder.
+
+12. GOVERNING LAW
+
+This License shall be governed by and construed in accordance with the laws of the jurisdiction selected by the copyright holder, without regard to conflict of law principles.
+
+13. ENTIRE AGREEMENT
+
+This License constitutes the entire agreement concerning the Software and supersedes any prior agreements, understandings, or representations regarding the Software.
+
+END OF TERMS AND CONDITIONS
