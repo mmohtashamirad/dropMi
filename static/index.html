@@ -8,12 +8,43 @@
   </head>
   <body>
     <main class="page-shell">
-      <section class="drop-zone" id="drop-zone">
-        <p class="eyebrow">SonDrop</p>
-        <h1>Drop your MP3 file here</h1>
-        <p class="subtext">Drag and drop an MP3 file to begin.</p>
+      <section class="panel">
+        <div class="screen screen-active" id="drop-screen">
+          <div class="drop-zone" id="drop-zone">
+            <p class="eyebrow">SonDrop</p>
+            <h1 id="drop-title">Drop your MP3 file here</h1>
+            <p class="subtext" id="drop-subtext">Drag and drop an MP3 file to begin.</p>
+            <button class="secondary-button" id="browse-button" type="button">Choose a file</button>
+            <input class="file-input" id="file-input" type="file" accept=".mp3,audio/mpeg" />
+          </div>
+        </div>
+
+        <div class="screen" id="upload-screen">
+          <p class="eyebrow">Uploading</p>
+          <h1 class="screen-title">Sending your file</h1>
+          <p class="subtext" id="upload-file-name">Preparing upload...</p>
+          <div class="progress-track" aria-hidden="true">
+            <div class="progress-fill" id="progress-fill"></div>
+          </div>
+          <p class="progress-label" id="progress-label">0%</p>
+        </div>
+
+        <div class="screen" id="result-screen">
+          <p class="eyebrow">eyeD3 Result</p>
+          <h1 class="screen-title">Analysis complete</h1>
+          <p class="subtext" id="result-file-name"></p>
+          <pre class="result-output" id="result-output"></pre>
+          <button class="primary-button" id="ok-button" type="button">OK</button>
+        </div>
       </section>
     </main>
+
+    <template id="result-error-template">
+      <div class="result-error">
+        <strong>Analysis issue</strong>
+        <p id="result-error-text"></p>
+      </div>
+    </template>
 
     <script src="/static/app.js"></script>
   </body>

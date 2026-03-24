@@ -11,7 +11,8 @@ SonDrop is a small Go web application for dropping an audio file into the browse
 From the project root:
 
 ```bash
-go run .
+mkdir -p upload_tmp upload
+go run . -t ./upload_tmp -u ./upload
 ```
 
 The server starts on `http://localhost:8080`.
@@ -28,7 +29,8 @@ go build -o build/sondrop
 Then run it with:
 
 ```bash
-./build/sondrop
+mkdir -p upload_tmp upload
+./build/sondrop -t ./upload_tmp -u ./upload
 ```
 
 ## Make Targets
@@ -41,6 +43,10 @@ make build
 
 This also writes the binary to `build/sondrop`.
 
+Short flags:
+- `-t`: temporary upload directory
+- `-u`: final upload directory
+
 ## Project Layout
 
 - `main.go`: Go HTTP server entry point
@@ -48,4 +54,4 @@ This also writes the binary to `build/sondrop`.
 
 ## Current Status
 
-The current version serves a single page with a file drop area. Upload handling, progress display, and `eyeD3` integration are planned next.
+The current version uploads the file into a temporary upload directory, runs `eyeD3`, shows the output in the browser, and moves the file into the final upload directory when the `OK` button is pressed.
