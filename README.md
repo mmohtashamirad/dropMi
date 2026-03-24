@@ -49,8 +49,18 @@ Short flags:
 
 ## Project Layout
 
-- `main.go`: Go HTTP server entry point
+- `main.go`: startup entry point
+- `config.go`: command-line flags and directory setup
+- `server.go`: server construction and route registration
+- `handlers.go`: upload and confirm HTTP handlers
+- `eyed3.go`: `eyeD3` execution
+- `files.go`: upload file helpers and path validation
+- `responses.go`: request/response types and JSON helper
 - `static/`: frontend files served by the Go server
+- `static/app.js`: frontend bootstrapping and event wiring
+- `static/dom.js`: shared DOM element references
+- `static/ui.js`: screen and result rendering helpers
+- `static/upload.js`: upload and confirm network calls
 
 ## Current Status
 
