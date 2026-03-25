@@ -1,5 +1,6 @@
 export const elements = {
   browseButton: document.getElementById("browse-button"),
+  cancelUploadButton: document.getElementById("cancel-upload-button"),
   dropScreen: document.getElementById("drop-screen"),
   dropSubtext: document.getElementById("drop-subtext"),
   dropTitle: document.getElementById("drop-title"),

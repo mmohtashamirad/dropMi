@@ -4,6 +4,7 @@ import {
   renderConfirmError,
   resetDropMessage,
   resetResultScreen,
+  resetUploadScreen,
   setDraggingState,
   showResult,
   showScreen
@@ -11,6 +12,7 @@ import {
 
 let currentUploadId = "";
 let dragDepth = 0;
+let activeUpload = null;
 
 elements.dropZone.addEventListener("dragenter", (event) => {
   event.preventDefault();
@@ -54,6 +56,14 @@ elements.fileInput.addEventListener("change", () => {
   }
 });
 
+elements.cancelUploadButton.addEventListener("click", () => {
+  if (!activeUpload) {
+    return;
+  }
+
+  activeUpload.abort();
+});
+
 elements.okButton.addEventListener("click", async () => {
   elements.okButton.disabled = true;
   elements.okButton.textContent = "Moving file...";
@@ -76,14 +86,24 @@ elements.okButton.addEventListener("click", async () => {
 });
 
 function startUpload(file) {
-  uploadFile(file, {
+  activeUpload = uploadFile(file, {
     onSuccess(payload) {
+      activeUpload = null;
       currentUploadId = payload.uploadId || "";
       showResult(payload, false);
     },
     onError(payload) {
+      activeUpload = null;
       currentUploadId = payload.uploadId || "";
       showResult(payload, true);
+    },
+    onCancel() {
+      activeUpload = null;
+      currentUploadId = "";
+      resetUploadScreen();
+      resetDropMessage();
+      elements.fileInput.value = "";
+      showScreen(elements.dropScreen);
     }
   });
 }

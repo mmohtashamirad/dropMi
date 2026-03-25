@@ -61,3 +61,8 @@ export function resetResultScreen() {
   clearResultError();
   elements.fileInput.value = "";
 }
+
+export function resetUploadScreen() {
+  elements.uploadFileName.textContent = "Preparing upload...";
+  setProgress(0);
+}

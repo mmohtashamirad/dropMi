@@ -45,7 +45,17 @@ export function uploadFile(file, callbacks) {
     });
   });
 
+  xhr.addEventListener("abort", () => {
+    callbacks.onCancel();
+  });
+
   xhr.send(formData);
+
+  return {
+    abort() {
+      xhr.abort();
+    }
+  };
 }
 
 export async function confirmUpload(uploadId) {
