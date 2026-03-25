@@ -71,6 +71,12 @@ body {
   box-shadow: 0 26px 80px rgba(45, 138, 87, 0.18);
 }
 
+.drop-zone.is-dragging .secondary-button {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
 .eyebrow {
   margin: 0;
   letter-spacing: 0.24em;
