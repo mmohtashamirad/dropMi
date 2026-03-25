@@ -134,6 +134,18 @@ h1 {
   color: var(--text);
 }
 
+.action-row {
+  display: flex;
+  gap: 14px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.action-row .primary-button,
+.action-row .secondary-button {
+  margin-top: 28px;
+}
+
 .file-input {
   display: none;
 }

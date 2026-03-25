@@ -128,3 +128,46 @@ func (s *server) handleConfirm(w http.ResponseWriter, r *http.Request) {
 		Message:  "File moved to upload directory.",
 	})
 }
+
+func (s *server) handleCancel(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.Header().Set("Allow", http.MethodPost)
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req confirmRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, confirmResponse{
+			Error: "Unable to read cancel request.",
+		})
+		return
+	}
+
+	uploadID, err := validateUploadID(req.UploadID)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, confirmResponse{
+			Error: err.Error(),
+		})
+		return
+	}
+
+	sourcePath := tempUploadPath(s.uploadTmpDir, uploadID)
+	if err := os.Remove(sourcePath); err != nil {
+		status := http.StatusInternalServerError
+		message := "Unable to delete the uploaded file."
+		if errors.Is(err, os.ErrNotExist) {
+			status = http.StatusNotFound
+			message = "Uploaded file not found."
+		}
+
+		writeJSON(w, status, confirmResponse{
+			Error: message,
+		})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, confirmResponse{
+		Message: "Uploaded file deleted.",
+	})
+}

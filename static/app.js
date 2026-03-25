@@ -1,5 +1,5 @@
 import { elements } from "/static/dom.js";
-import { confirmUpload, uploadFile } from "/static/upload.js";
+import { cancelUpload, confirmUpload, uploadFile } from "/static/upload.js";
 import {
   renderConfirmError,
   resetDropMessage,
@@ -66,6 +66,7 @@ elements.cancelUploadButton.addEventListener("click", () => {
 
 elements.okButton.addEventListener("click", async () => {
   elements.okButton.disabled = true;
+  elements.cancelResultButton.disabled = true;
   elements.okButton.textContent = "Moving file...";
 
   if (currentUploadId) {
@@ -73,16 +74,32 @@ elements.okButton.addEventListener("click", async () => {
     if (!confirmation.ok) {
       renderConfirmError(confirmation.error);
       elements.okButton.disabled = false;
+      elements.cancelResultButton.disabled = false;
       elements.okButton.textContent = "OK";
       return;
     }
   }
 
-  currentUploadId = "";
-  resetResultScreen();
-  showScreen(elements.dropScreen);
-  elements.okButton.disabled = false;
-  elements.okButton.textContent = "OK";
+  finishResultAction();
+});
+
+elements.cancelResultButton.addEventListener("click", async () => {
+  elements.cancelResultButton.disabled = true;
+  elements.okButton.disabled = true;
+  elements.cancelResultButton.textContent = "Deleting file...";
+
+  if (currentUploadId) {
+    const cancellation = await cancelUpload(currentUploadId);
+    if (!cancellation.ok) {
+      renderConfirmError(cancellation.error);
+      elements.cancelResultButton.disabled = false;
+      elements.okButton.disabled = false;
+      elements.cancelResultButton.textContent = "Cancel";
+      return;
+    }
+  }
+
+  finishResultAction();
 });
 
 function startUpload(file) {
@@ -106,4 +123,14 @@ function startUpload(file) {
       showScreen(elements.dropScreen);
     }
   });
+}
+
+function finishResultAction() {
+  currentUploadId = "";
+  resetResultScreen();
+  showScreen(elements.dropScreen);
+  elements.okButton.disabled = false;
+  elements.cancelResultButton.disabled = false;
+  elements.okButton.textContent = "OK";
+  elements.cancelResultButton.textContent = "Cancel";
 }

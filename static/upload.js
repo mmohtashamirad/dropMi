@@ -59,8 +59,16 @@ export function uploadFile(file, callbacks) {
 }
 
 export async function confirmUpload(uploadId) {
+  return submitUploadAction("/confirm", uploadId, "The server could not move the file into the upload directory.");
+}
+
+export async function cancelUpload(uploadId) {
+  return submitUploadAction("/cancel", uploadId, "The server could not delete the uploaded file.");
+}
+
+async function submitUploadAction(url, uploadId, fallbackError) {
   try {
-    const response = await fetch("/confirm", {
+    const response = await fetch(url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -75,7 +83,7 @@ export async function confirmUpload(uploadId) {
 
     return {
       ok: false,
-      error: payload?.error || "The server could not move the file into the upload directory."
+      error: payload?.error || fallbackError
     };
   } catch (error) {
     return {

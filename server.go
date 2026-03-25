@@ -21,6 +21,7 @@ func (s *server) routes() http.Handler {
 	mux.Handle("/static/", http.StripPrefix("/static/", fileServer))
 	mux.HandleFunc("/upload", s.handleUpload)
 	mux.HandleFunc("/confirm", s.handleConfirm)
+	mux.HandleFunc("/cancel", s.handleCancel)
 	mux.HandleFunc("/", s.handleIndex)
 
 	return mux
