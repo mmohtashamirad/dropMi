@@ -10,25 +10,32 @@ import {
 } from "/static/ui.js";
 
 let currentUploadId = "";
+let dragDepth = 0;
 
-["dragenter", "dragover"].forEach((eventName) => {
-  elements.dropZone.addEventListener(eventName, (event) => {
-    event.preventDefault();
-    setDraggingState(true);
-  });
+elements.dropZone.addEventListener("dragenter", (event) => {
+  event.preventDefault();
+  dragDepth += 1;
+  setDraggingState(true);
 });
 
-["dragleave", "drop"].forEach((eventName) => {
-  elements.dropZone.addEventListener(eventName, (event) => {
-    event.preventDefault();
+elements.dropZone.addEventListener("dragover", (event) => {
+  event.preventDefault();
+  setDraggingState(true);
+});
+
+elements.dropZone.addEventListener("dragleave", (event) => {
+  event.preventDefault();
+  dragDepth = Math.max(0, dragDepth - 1);
+  if (dragDepth === 0) {
     setDraggingState(false);
-    if (eventName !== "drop") {
-      resetDropMessage();
-    }
-  });
+    resetDropMessage();
+  }
 });
 
 elements.dropZone.addEventListener("drop", (event) => {
+  event.preventDefault();
+  dragDepth = 0;
+  setDraggingState(false);
   const [file] = event.dataTransfer.files;
   resetDropMessage();
   if (file) {
