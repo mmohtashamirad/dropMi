@@ -10,9 +10,19 @@ type config struct {
 	uploadTmpDir string
 	uploadDir    string
 	addr         string
+	authDBPath   string
 }
 
-func parseConfig() config {
+type commandConfig struct {
+	username string
+	password string
+}
+
+func parseConfig() (*commandConfig, config) {
+	if len(os.Args) > 1 && os.Args[1] == "create-user" {
+		return parseCreateUserCommand()
+	}
+
 	var cfg config
 
 	flag.StringVar(&cfg.uploadTmpDir, "upload-tmp-dir", "", "directory for uploaded files pending confirmation")
@@ -20,6 +30,7 @@ func parseConfig() config {
 	flag.StringVar(&cfg.uploadDir, "upload-dir", "", "directory for confirmed uploaded files")
 	flag.StringVar(&cfg.uploadDir, "u", "", "directory for confirmed uploaded files")
 	flag.StringVar(&cfg.addr, "addr", ":8080", "HTTP listen address")
+	flag.StringVar(&cfg.authDBPath, "auth-db", "./auth.db", "SQLite auth database path")
 	flag.Parse()
 
 	if cfg.uploadTmpDir == "" || cfg.uploadDir == "" {
@@ -29,7 +40,24 @@ func parseConfig() config {
 	ensureDir(cfg.uploadTmpDir, "upload tmp dir")
 	ensureDir(cfg.uploadDir, "upload dir")
 
-	return cfg
+	return nil, cfg
+}
+
+func parseCreateUserCommand() (*commandConfig, config) {
+	var cmd commandConfig
+	var cfg config
+
+	createUserFlags := flag.NewFlagSet("create-user", flag.ExitOnError)
+	createUserFlags.StringVar(&cmd.username, "username", "", "username to create")
+	createUserFlags.StringVar(&cmd.password, "password", "", "password to store for the user")
+	createUserFlags.StringVar(&cfg.authDBPath, "auth-db", "./auth.db", "SQLite auth database path")
+	createUserFlags.Parse(os.Args[2:])
+
+	if cmd.username == "" || cmd.password == "" {
+		log.Fatal("create-user requires both -username and -password")
+	}
+
+	return &cmd, cfg
 }
 
 func ensureDir(path string, label string) {

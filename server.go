@@ -1,16 +1,21 @@
 package main
 
-import "net/http"
+import (
+	"database/sql"
+	"net/http"
+)
 
 type server struct {
 	uploadTmpDir string
 	uploadDir    string
+	authDB       *sql.DB
 }
 
-func newServer(cfg config) *server {
+func newServer(cfg config, authDB *sql.DB) *server {
 	return &server{
 		uploadTmpDir: cfg.uploadTmpDir,
 		uploadDir:    cfg.uploadDir,
+		authDB:       authDB,
 	}
 }
 

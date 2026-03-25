@@ -47,6 +47,23 @@ Short flags:
 - `-t`: temporary upload directory
 - `-u`: final upload directory
 
+## Minimal Auth Step
+
+The current auth setup only adds a SQLite `users` table and a simple user-creation command.
+Passwords are stored as plain text for now so we can take auth in small steps.
+
+Create a user:
+
+```bash
+go run . create-user -username admin -password secret
+```
+
+The auth database defaults to `./auth.db`, or you can override it:
+
+```bash
+go run . create-user -auth-db ./my-auth.db -username admin -password secret
+```
+
 ## Project Layout
 
 - `main.go`: startup entry point
