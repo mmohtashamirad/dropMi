@@ -1,11 +1,13 @@
 import { elements } from "/static/dom.js";
-import { cancelUpload, confirmUpload, uploadFile } from "/static/upload.js";
+import { cancelUpload, confirmUpload, login, uploadFile } from "/static/upload.js";
 import {
+  clearLoginError,
   renderConfirmError,
   resetDropMessage,
   resetResultScreen,
   resetUploadScreen,
   setDraggingState,
+  showLoginError,
   showResult,
   showScreen
 } from "/static/ui.js";
@@ -13,6 +15,26 @@ import {
 let currentUploadId = "";
 let dragDepth = 0;
 let activeUpload = null;
+
+elements.loginForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  clearLoginError();
+  elements.loginButton.disabled = true;
+  elements.loginButton.textContent = "Logging in...";
+
+  const result = await login(elements.usernameInput.value, elements.passwordInput.value);
+  if (!result.ok) {
+    showLoginError(result.error);
+    elements.loginButton.disabled = false;
+    elements.loginButton.textContent = "Log in";
+    return;
+  }
+
+  elements.passwordInput.value = "";
+  elements.loginButton.disabled = false;
+  elements.loginButton.textContent = "Log in";
+  showScreen(elements.dropScreen);
+});
 
 elements.dropZone.addEventListener("dragenter", (event) => {
   event.preventDefault();

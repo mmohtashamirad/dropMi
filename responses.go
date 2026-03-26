@@ -13,6 +13,16 @@ type analyzeResponse struct {
 	Error    string `json:"error,omitempty"`
 }
 
+type loginRequest struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
+type loginResponse struct {
+	OK    bool   `json:"ok,omitempty"`
+	Error string `json:"error,omitempty"`
+}
+
 type confirmRequest struct {
 	UploadID string `json:"uploadId"`
 }

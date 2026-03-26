@@ -12,7 +12,64 @@ import (
 
 const maxUploadSize = 100 << 20
 
+func (s *server) handleLogin(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.Header().Set("Allow", http.MethodPost)
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req loginRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, loginResponse{
+			Error: "Unable to read login request.",
+		})
+		return
+	}
+
+	ok, err := authenticateUser(s.authDB, req.Username, req.Password)
+	if err != nil {
+		log.Printf("authenticate user: %v", err)
+		writeJSON(w, http.StatusInternalServerError, loginResponse{
+			Error: "Unable to check your login right now.",
+		})
+		return
+	}
+
+	if !ok {
+		writeJSON(w, http.StatusUnauthorized, loginResponse{
+			Error: "Incorrect username or password.",
+		})
+		return
+	}
+
+	token, err := s.sessions.create(req.Username)
+	if err != nil {
+		log.Printf("create session: %v", err)
+		writeJSON(w, http.StatusInternalServerError, loginResponse{
+			Error: "Unable to start your session.",
+		})
+		return
+	}
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     sessionCookieName,
+		Value:    token,
+		Path:     "/",
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+	})
+
+	writeJSON(w, http.StatusOK, loginResponse{
+		OK: true,
+	})
+}
+
 func (s *server) handleUpload(w http.ResponseWriter, r *http.Request) {
+	if !s.requireAuth(w, r) {
+		return
+	}
+
 	if r.Method != http.MethodPost {
 		w.Header().Set("Allow", http.MethodPost)
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -77,6 +134,10 @@ func (s *server) handleUpload(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *server) handleConfirm(w http.ResponseWriter, r *http.Request) {
+	if !s.requireAuth(w, r) {
+		return
+	}
+
 	if r.Method != http.MethodPost {
 		w.Header().Set("Allow", http.MethodPost)
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -130,6 +191,10 @@ func (s *server) handleConfirm(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *server) handleCancel(w http.ResponseWriter, r *http.Request) {
+	if !s.requireAuth(w, r) {
+		return
+	}
+
 	if r.Method != http.MethodPost {
 		w.Header().Set("Allow", http.MethodPost)
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -170,4 +235,23 @@ func (s *server) handleCancel(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, confirmResponse{
 		Message: "Uploaded file deleted.",
 	})
+}
+
+func (s *server) requireAuth(w http.ResponseWriter, r *http.Request) bool {
+	cookie, err := r.Cookie(sessionCookieName)
+	if err != nil {
+		writeJSON(w, http.StatusUnauthorized, loginResponse{
+			Error: "Please log in first.",
+		})
+		return false
+	}
+
+	if _, ok := s.sessions.username(cookie.Value); !ok {
+		writeJSON(w, http.StatusUnauthorized, loginResponse{
+			Error: "Please log in first.",
+		})
+		return false
+	}
+
+	return true
 }

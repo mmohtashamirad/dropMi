@@ -9,6 +9,7 @@ type server struct {
 	uploadTmpDir string
 	uploadDir    string
 	authDB       *sql.DB
+	sessions     *sessionStore
 }
 
 func newServer(cfg config, authDB *sql.DB) *server {
@@ -16,6 +17,7 @@ func newServer(cfg config, authDB *sql.DB) *server {
 		uploadTmpDir: cfg.uploadTmpDir,
 		uploadDir:    cfg.uploadDir,
 		authDB:       authDB,
+		sessions:     newSessionStore(),
 	}
 }
 
@@ -24,6 +26,7 @@ func (s *server) routes() http.Handler {
 
 	fileServer := http.FileServer(http.Dir("./static"))
 	mux.Handle("/static/", http.StripPrefix("/static/", fileServer))
+	mux.HandleFunc("/login", s.handleLogin)
 	mux.HandleFunc("/upload", s.handleUpload)
 	mux.HandleFunc("/confirm", s.handleConfirm)
 	mux.HandleFunc("/cancel", s.handleCancel)

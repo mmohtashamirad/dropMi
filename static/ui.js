@@ -9,7 +9,7 @@ export function setDraggingState(isDragging) {
 }
 
 export function showScreen(screen) {
-  [elements.dropScreen, elements.uploadScreen, elements.resultScreen].forEach((element) => {
+  [elements.loginScreen, elements.dropScreen, elements.uploadScreen, elements.resultScreen].forEach((element) => {
     element.classList.toggle("screen-active", element === screen);
   });
 }
@@ -65,4 +65,14 @@ export function resetResultScreen() {
 export function resetUploadScreen() {
   elements.uploadFileName.textContent = "Preparing upload...";
   setProgress(0);
+}
+
+export function showLoginError(message) {
+  elements.loginError.hidden = false;
+  elements.loginError.textContent = message;
+}
+
+export function clearLoginError() {
+  elements.loginError.hidden = true;
+  elements.loginError.textContent = "";
 }

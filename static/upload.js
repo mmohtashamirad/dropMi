@@ -58,6 +58,33 @@ export function uploadFile(file, callbacks) {
   };
 }
 
+export async function login(username, password) {
+  try {
+    const response = await fetch("/login", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ username, password })
+    });
+
+    const payload = await response.json().catch(() => null);
+    if (response.ok) {
+      return { ok: true };
+    }
+
+    return {
+      ok: false,
+      error: payload?.error || "Login failed."
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      error: "The browser could not reach the server."
+    };
+  }
+}
+
 export async function confirmUpload(uploadId) {
   return submitUploadAction("/confirm", uploadId, "The server could not move the file into the upload directory.");
 }

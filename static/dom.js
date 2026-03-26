@@ -7,6 +7,10 @@ export const elements = {
   dropTitle: document.getElementById("drop-title"),
   dropZone: document.getElementById("drop-zone"),
   fileInput: document.getElementById("file-input"),
+  loginButton: document.getElementById("login-button"),
+  loginError: document.getElementById("login-error"),
+  loginForm: document.getElementById("login-form"),
+  loginScreen: document.getElementById("login-screen"),
   okButton: document.getElementById("ok-button"),
   progressFill: document.getElementById("progress-fill"),
   progressLabel: document.getElementById("progress-label"),
@@ -14,6 +18,8 @@ export const elements = {
   resultFileName: document.getElementById("result-file-name"),
   resultOutput: document.getElementById("result-output"),
   resultScreen: document.getElementById("result-screen"),
+  usernameInput: document.getElementById("username-input"),
+  passwordInput: document.getElementById("password-input"),
   uploadFileName: document.getElementById("upload-file-name"),
   uploadScreen: document.getElementById("upload-screen")
 };

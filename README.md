@@ -64,6 +64,9 @@ The auth database defaults to `./auth.db`, or you can override it:
 go run . create-user -auth-db ./my-auth.db -username admin -password secret
 ```
 
+After creating a user, the site now starts on a login screen.
+Only a correct username and password can access the upload UI.
+
 ## Project Layout
 
 - `main.go`: startup entry point
