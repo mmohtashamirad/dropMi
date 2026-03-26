@@ -1,5 +1,5 @@
 import { elements } from "/static/dom.js";
-import { cancelUpload, confirmUpload, login, logout, uploadFile } from "/static/upload.js";
+import { login, logout } from "/static/auth-client.js";
 import {
   clearLoginError,
   hideSessionBar,
@@ -14,6 +14,7 @@ import {
   showSessionBar,
   showScreen
 } from "/static/ui.js";
+import { cancelUpload, confirmUpload, uploadFile } from "/static/upload-client.js";
 
 let currentUploadId = "";
 let dragDepth = 0;
