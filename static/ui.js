@@ -82,4 +82,15 @@ export function resetAuthenticatedUI() {
   resetUploadScreen();
   resetDropMessage();
   elements.fileInput.value = "";
+  hideSessionBar();
+}
+
+export function showSessionBar(username) {
+  elements.sessionUser.textContent = username;
+  elements.sessionBar.hidden = false;
+}
+
+export function hideSessionBar() {
+  elements.sessionUser.textContent = "";
+  elements.sessionBar.hidden = true;
 }

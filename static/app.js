@@ -2,6 +2,7 @@ import { elements } from "/static/dom.js";
 import { cancelUpload, confirmUpload, login, logout, uploadFile } from "/static/upload.js";
 import {
   clearLoginError,
+  hideSessionBar,
   renderConfirmError,
   resetAuthenticatedUI,
   resetDropMessage,
@@ -10,6 +11,7 @@ import {
   setDraggingState,
   showLoginError,
   showResult,
+  showSessionBar,
   showScreen
 } from "/static/ui.js";
 
@@ -31,15 +33,14 @@ elements.loginForm.addEventListener("submit", async (event) => {
     return;
   }
 
+  showSessionBar(elements.usernameInput.value.trim());
   elements.passwordInput.value = "";
   elements.loginButton.disabled = false;
   elements.loginButton.textContent = "Log in";
   showScreen(elements.dropScreen);
 });
 
-[elements.logoutButton, elements.logoutUploadButton, elements.logoutResultButton].forEach((button) => {
-  button.addEventListener("click", handleLogout);
-});
+elements.logoutButton.addEventListener("click", handleLogout);
 
 elements.dropZone.addEventListener("dragenter", (event) => {
   event.preventDefault();
@@ -173,6 +174,7 @@ async function handleLogout() {
   currentUploadId = "";
   dragDepth = 0;
   clearLoginError();
+  hideSessionBar();
   resetAuthenticatedUI();
   elements.passwordInput.value = "";
   showScreen(elements.loginScreen);

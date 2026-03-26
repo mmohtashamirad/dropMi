@@ -31,6 +31,31 @@ body {
   display: grid;
   place-items: center;
   padding: 24px;
+  position: relative;
+}
+
+.session-bar {
+  position: fixed;
+  top: 20px;
+  right: 24px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 14px;
+  border-radius: 999px;
+  background: rgba(255, 252, 246, 0.92);
+  box-shadow: 0 12px 28px rgba(42, 59, 71, 0.12);
+  z-index: 10;
+}
+
+.session-bar[hidden] {
+  display: none;
+}
+
+.session-user {
+  color: var(--muted);
+  font-size: 0.95rem;
+  font-weight: 700;
 }
 
 .panel {
@@ -50,13 +75,6 @@ body {
   display: grid;
   place-items: center;
   text-align: center;
-}
-
-.panel-toolbar {
-  width: 100%;
-  display: flex;
-  justify-content: flex-end;
-  margin-bottom: 20px;
 }
 
 .toolbar-button {
@@ -258,6 +276,13 @@ h1 {
 }
 
 @media (max-width: 640px) {
+  .session-bar {
+    top: 14px;
+    right: 14px;
+    left: 14px;
+    justify-content: space-between;
+  }
+
   .panel,
   .drop-zone {
     min-height: 260px;
