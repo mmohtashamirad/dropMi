@@ -1,8 +1,9 @@
 import { elements } from "/static/dom.js";
-import { cancelUpload, confirmUpload, login, uploadFile } from "/static/upload.js";
+import { cancelUpload, confirmUpload, login, logout, uploadFile } from "/static/upload.js";
 import {
   clearLoginError,
   renderConfirmError,
+  resetAuthenticatedUI,
   resetDropMessage,
   resetResultScreen,
   resetUploadScreen,
@@ -34,6 +35,10 @@ elements.loginForm.addEventListener("submit", async (event) => {
   elements.loginButton.disabled = false;
   elements.loginButton.textContent = "Log in";
   showScreen(elements.dropScreen);
+});
+
+[elements.logoutButton, elements.logoutUploadButton, elements.logoutResultButton].forEach((button) => {
+  button.addEventListener("click", handleLogout);
 });
 
 elements.dropZone.addEventListener("dragenter", (event) => {
@@ -155,4 +160,20 @@ function finishResultAction() {
   elements.cancelResultButton.disabled = false;
   elements.okButton.textContent = "OK";
   elements.cancelResultButton.textContent = "Cancel";
+}
+
+async function handleLogout() {
+  if (activeUpload) {
+    activeUpload.abort();
+  }
+
+  await logout();
+
+  activeUpload = null;
+  currentUploadId = "";
+  dragDepth = 0;
+  clearLoginError();
+  resetAuthenticatedUI();
+  elements.passwordInput.value = "";
+  showScreen(elements.loginScreen);
 }

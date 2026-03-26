@@ -110,3 +110,9 @@ func (s *sessionStore) username(token string) (string, bool) {
 	s.mu.RUnlock()
 	return username, ok
 }
+
+func (s *sessionStore) delete(token string) {
+	s.mu.Lock()
+	delete(s.sessions, token)
+	s.mu.Unlock()
+}

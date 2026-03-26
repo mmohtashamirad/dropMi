@@ -65,6 +65,31 @@ func (s *server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (s *server) handleLogout(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.Header().Set("Allow", http.MethodPost)
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	if cookie, err := r.Cookie(sessionCookieName); err == nil {
+		s.sessions.delete(cookie.Value)
+	}
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     sessionCookieName,
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -1,
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+	})
+
+	writeJSON(w, http.StatusOK, loginResponse{
+		OK: true,
+	})
+}
+
 func (s *server) handleUpload(w http.ResponseWriter, r *http.Request) {
 	if !s.requireAuth(w, r) {
 		return

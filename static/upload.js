@@ -85,6 +85,29 @@ export async function login(username, password) {
   }
 }
 
+export async function logout() {
+  try {
+    const response = await fetch("/logout", {
+      method: "POST"
+    });
+
+    const payload = await response.json().catch(() => null);
+    if (response.ok) {
+      return { ok: true };
+    }
+
+    return {
+      ok: false,
+      error: payload?.error || "Logout failed."
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      error: "The browser could not reach the server."
+    };
+  }
+}
+
 export async function confirmUpload(uploadId) {
   return submitUploadAction("/confirm", uploadId, "The server could not move the file into the upload directory.");
 }

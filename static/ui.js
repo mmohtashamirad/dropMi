@@ -76,3 +76,10 @@ export function clearLoginError() {
   elements.loginError.hidden = true;
   elements.loginError.textContent = "";
 }
+
+export function resetAuthenticatedUI() {
+  resetResultScreen();
+  resetUploadScreen();
+  resetDropMessage();
+  elements.fileInput.value = "";
+}
