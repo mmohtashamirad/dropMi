@@ -56,6 +56,7 @@ function renderComparisonTable(eyeD3Output, songrecOutput) {
     row.appendChild(createTextCell(label));
     row.appendChild(createValueCell(eyeD3Value));
     row.appendChild(createValueCell(songrecValue));
+    row.appendChild(createEditableCell(label, songrecValue || eyeD3Value || ""));
     elements.resultTableBody.appendChild(row);
   });
 }
@@ -66,7 +67,7 @@ function renderEmptyComparisonTable(message) {
   row.appendChild(createTextCell("Result"));
 
   const valueCell = document.createElement("td");
-  valueCell.colSpan = 2;
+  valueCell.colSpan = 3;
   valueCell.textContent = message;
   row.appendChild(valueCell);
 
@@ -187,6 +188,46 @@ function createValueCell(value) {
 
   cell.textContent = value;
   return cell;
+}
+
+function createEditableCell(label, value) {
+  const cell = document.createElement("td");
+  const input = document.createElement(label === "Album Art" ? "textarea" : "input");
+
+  input.className = "editable-value";
+  input.value = value;
+  input.setAttribute("aria-label", `${label} selected value`);
+
+  if (label === "Album Art") {
+    input.rows = 3;
+    const preview = document.createElement("div");
+    preview.className = "editable-art-preview";
+    updateArtPreview(preview, value);
+    input.addEventListener("input", () => {
+      updateArtPreview(preview, input.value.trim());
+    });
+    cell.appendChild(input);
+    cell.appendChild(preview);
+    return cell;
+  }
+
+  input.type = "text";
+  cell.appendChild(input);
+  return cell;
+}
+
+function updateArtPreview(container, value) {
+  container.innerHTML = "";
+
+  if (!looksLikeImage(value)) {
+    return;
+  }
+
+  const image = document.createElement("img");
+  image.className = "result-art";
+  image.src = value;
+  image.alt = "Selected album art";
+  container.appendChild(image);
 }
 
 function looksLikeImage(value) {
