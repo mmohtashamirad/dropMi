@@ -5,6 +5,8 @@ SonDrop is a small Go web application for dropping an audio file into the browse
 ## Prerequisites
 
 - Go 1.22 or newer
+- Docker
+- A local `music-tools` image with `eyeD3` installed
 
 ## Run Locally
 
@@ -97,7 +99,7 @@ Only a correct username and password can access the upload UI.
 The current version uploads the file into a temporary upload directory, runs `eyeD3`, shows the output in the browser, and moves the file into the final upload directory when the `OK` button is pressed.
 
 ## Docker
-a dockerfile is added to create an image that you can run songrec easily.
+a dockerfile is added to create an image that you can run songrec and eyeD3 easily.
 do this once on your computer from where you have the dockerfile:
 `docker build -t music-tools .`
 
@@ -106,3 +108,5 @@ Then run the command below to get the shazam result:
 
 or for eyeD3:
 `docker run --rm -v "$(pwd)/build/upload:/songs" music-tools   eyeD3 /songs/sondrop-214817309.mp3`
+
+The backend now uses this Docker image automatically when it analyzes uploads with eyeD3.
