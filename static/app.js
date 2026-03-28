@@ -131,6 +131,23 @@ elements.cancelResultButton.addEventListener("click", async () => {
   finishResultAction();
 });
 
+document.addEventListener("keydown", (event) => {
+  if (event.key !== "Escape") {
+    return;
+  }
+
+  if (!elements.resultScreen.classList.contains("screen-active")) {
+    return;
+  }
+
+  if (elements.cancelResultButton.disabled) {
+    return;
+  }
+
+  event.preventDefault();
+  elements.cancelResultButton.click();
+});
+
 function startUpload(file) {
   activeUpload = uploadFile(file, {
     onSuccess(payload) {
