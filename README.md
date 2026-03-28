@@ -93,7 +93,10 @@ The current version uploads the file into a temporary upload directory, runs `ey
 ## Docker
 a dockerfile is added to create an image that you can run songrec easily.
 do this once on your computer from where you have the dockerfile:
-`docker build -t songrec-runner .`
+`docker build -t music-tools .`
 
 Then run the command below to get the shazam result:
-`docker run --rm -v $(pwd)/build/upload:/songs songrec-runner audio-file-to-recognized-song /songs/sondrop-214817309.mp3`
+`docker run --rm -v "$(pwd)/build/upload:/songs" music-tools   songrec audio-file-to-recognized-song /songs/sondrop-214817309.mp3`
+
+or for eyeD3:
+`docker run --rm -v "$(pwd)/build/upload:/songs" music-tools   eyeD3 /songs/sondrop-214817309.mp3`

@@ -7,6 +7,8 @@ RUN apt update && apt install -y \
     wget \
     ca-certificates \
     ffmpeg \
+    python3 \
+    python3-pip \
     && rm -rf /var/lib/apt/lists/*
 
 RUN wget -qO- 'http://keyserver.ubuntu.com/pks/lookup?op=get&search=0x6888550b2fc77d09' \
@@ -16,6 +18,8 @@ RUN wget -qO- 'http://keyserver.ubuntu.com/pks/lookup?op=get&search=0x6888550b2f
     && apt install -y songrec \
     && rm -rf /var/lib/apt/lists/*
 
+RUN pip3 install --break-system-packages eyeD3
+
 WORKDIR /songs
 
-ENTRYPOINT ["songrec"]
+CMD ["/bin/bash"]
