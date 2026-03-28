@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os/exec"
 	"path/filepath"
-	"strings"
 	"time"
 )
 
@@ -60,22 +59,4 @@ func runMusicToolsCommand(parent context.Context, filePath string, tool string, 
 
 	output, err := cmd.CombinedOutput()
 	return string(output), err
-}
-
-func combineAnalysisOutput(eyeD3Output string, songrecOutput string) string {
-	var sections []string
-
-	sections = append(sections, formatAnalysisSection("eyeD3", eyeD3Output))
-	sections = append(sections, formatAnalysisSection("songrec", songrecOutput))
-
-	return strings.Join(sections, "\n\n")
-}
-
-func formatAnalysisSection(title string, output string) string {
-	trimmedOutput := strings.TrimSpace(output)
-	if trimmedOutput == "" {
-		trimmedOutput = "No output returned."
-	}
-
-	return fmt.Sprintf("%s\n%s\n%s", title, strings.Repeat("=", len(title)), trimmedOutput)
 }

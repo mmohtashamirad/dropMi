@@ -147,10 +147,10 @@ func (s *server) handleUpload(w http.ResponseWriter, r *http.Request) {
 		}
 
 		writeJSON(w, http.StatusInternalServerError, analyzeResponse{
-			UploadID: filepath.Base(tempPath),
-			FileName: header.Filename,
-			Output:   eyeD3Output,
-			Error:    message,
+			UploadID:    filepath.Base(tempPath),
+			FileName:    header.Filename,
+			EyeD3Output: eyeD3Output,
+			Error:       message,
 		})
 		return
 	}
@@ -165,19 +165,21 @@ func (s *server) handleUpload(w http.ResponseWriter, r *http.Request) {
 		}
 
 		writeJSON(w, http.StatusInternalServerError, analyzeResponse{
-			UploadID: filepath.Base(tempPath),
-			FileName: header.Filename,
-			Output:   combineAnalysisOutput(eyeD3Output, songrecOutput),
-			Error:    message,
+			UploadID:      filepath.Base(tempPath),
+			FileName:      header.Filename,
+			EyeD3Output:   eyeD3Output,
+			SongrecOutput: songrecOutput,
+			Error:         message,
 		})
 		return
 	}
 
 	Infof("songrec analysis completed for %q", header.Filename)
 	writeJSON(w, http.StatusOK, analyzeResponse{
-		UploadID: filepath.Base(tempPath),
-		FileName: header.Filename,
-		Output:   combineAnalysisOutput(eyeD3Output, songrecOutput),
+		UploadID:      filepath.Base(tempPath),
+		FileName:      header.Filename,
+		EyeD3Output:   eyeD3Output,
+		SongrecOutput: songrecOutput,
 	})
 }
 

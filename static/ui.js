@@ -35,28 +35,30 @@ export function renderConfirmError(message) {
   clearResultError();
   const fragment = elements.resultErrorTemplate.content.cloneNode(true);
   fragment.querySelector("#result-error-text").textContent = message;
-  elements.resultScreen.insertBefore(fragment, elements.resultOutput);
+  elements.resultScreen.insertBefore(fragment, elements.eyed3Output.parentElement);
 }
 
 export function showResult(payload, isError) {
   setProgress(100);
   showScreen(elements.resultScreen);
   elements.resultFileName.textContent = payload.fileName ? `File: ${payload.fileName}` : "";
-  elements.resultOutput.textContent = payload.output || "No output returned.";
+  elements.eyed3Output.textContent = payload.eyeD3Output || "No eyeD3 output returned.";
+  elements.songrecOutput.textContent = payload.songrecOutput || "No songrec output returned.";
   clearResultError();
 
   if (payload.error) {
     renderConfirmError(payload.error);
   }
 
-  if (isError && !payload.output) {
-    elements.resultOutput.textContent = "No eyeD3 output was returned.";
+  if (isError && !payload.eyeD3Output) {
+    elements.eyed3Output.textContent = "No eyeD3 output returned.";
   }
 }
 
 export function resetResultScreen() {
   elements.resultFileName.textContent = "";
-  elements.resultOutput.textContent = "";
+  elements.eyed3Output.textContent = "";
+  elements.songrecOutput.textContent = "";
   resetDropMessage();
   clearResultError();
   elements.fileInput.value = "";

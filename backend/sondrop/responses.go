@@ -7,10 +7,11 @@ import (
 )
 
 type analyzeResponse struct {
-	UploadID string `json:"uploadId,omitempty"`
-	FileName string `json:"fileName"`
-	Output   string `json:"output,omitempty"`
-	Error    string `json:"error,omitempty"`
+	UploadID     string `json:"uploadId,omitempty"`
+	FileName     string `json:"fileName"`
+	EyeD3Output  string `json:"eyeD3Output,omitempty"`
+	SongrecOutput string `json:"songrecOutput,omitempty"`
+	Error        string `json:"error,omitempty"`
 }
 
 type loginRequest struct {

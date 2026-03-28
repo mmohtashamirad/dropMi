@@ -247,6 +247,20 @@ h1 {
   font-weight: 700;
 }
 
+.result-section {
+  width: 100%;
+  margin-top: 22px;
+}
+
+.result-heading {
+  margin: 0 0 10px;
+  text-align: left;
+  font-size: 1rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
 .result-output {
   width: 100%;
   max-width: 100%;
