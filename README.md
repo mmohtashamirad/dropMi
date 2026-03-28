@@ -89,3 +89,11 @@ Only a correct username and password can access the upload UI.
 ## Current Status
 
 The current version uploads the file into a temporary upload directory, runs `eyeD3`, shows the output in the browser, and moves the file into the final upload directory when the `OK` button is pressed.
+
+## Docker
+a dockerfile is added to create an image that you can run songrec easily.
+do this once on your computer from where you have the dockerfile:
+`docker build -t songrec-runner .`
+
+Then run the command below to get the shazam result:
+`docker run --rm -v $(pwd)/build/upload:/songs songrec-runner audio-file-to-recognized-song /songs/sondrop-214817309.mp3`
