@@ -25,7 +25,8 @@ type loginResponse struct {
 }
 
 type confirmRequest struct {
-	UploadID string `json:"uploadId"`
+	UploadID         string            `json:"uploadId"`
+	SelectedMetadata map[string]string `json:"selectedMetadata,omitempty"`
 }
 
 type confirmResponse struct {

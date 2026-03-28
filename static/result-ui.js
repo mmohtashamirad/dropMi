@@ -39,6 +39,17 @@ export function resetResultScreen() {
   elements.fileInput.value = "";
 }
 
+export function getSelectedMetadata() {
+  const metadata = {};
+  const inputs = elements.resultTableBody.querySelectorAll("[data-selected-tag]");
+
+  inputs.forEach((input) => {
+    metadata[input.dataset.selectedTag] = input.value.trim();
+  });
+
+  return metadata;
+}
+
 function renderComparisonTable(eyeD3Output, songrecOutput) {
   const eyeD3Data = extractEyeD3Fields(eyeD3Output);
   const songrecData = extractSongrecFields(songrecOutput);
@@ -193,10 +204,12 @@ function createValueCell(value) {
 function createEditableCell(label, value) {
   const cell = document.createElement("td");
   const input = document.createElement(label === "Album Art" ? "textarea" : "input");
+  const tagKey = toMetadataKey(label);
 
   input.className = "editable-value";
   input.value = value;
   input.setAttribute("aria-label", `${label} selected value`);
+  input.dataset.selectedTag = tagKey;
 
   if (label === "Album Art") {
     input.rows = 3;
@@ -232,4 +245,8 @@ function updateArtPreview(container, value) {
 
 function looksLikeImage(value) {
   return typeof value === "string" && (value.startsWith("http://") || value.startsWith("https://") || value.startsWith("data:image/"));
+}
+
+function toMetadataKey(label) {
+  return label.toLowerCase().replace(/\s+/g, "_");
 }

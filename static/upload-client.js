@@ -59,10 +59,13 @@ export function uploadFile(file, callbacks) {
   };
 }
 
-export async function confirmUpload(uploadId) {
+export async function confirmUpload(uploadId, selectedMetadata) {
   return submitUploadAction(
     "/confirm",
-    uploadId,
+    {
+      uploadId,
+      selectedMetadata
+    },
     "The server could not move the file into the upload directory."
   );
 }
@@ -70,13 +73,15 @@ export async function confirmUpload(uploadId) {
 export async function cancelUpload(uploadId) {
   return submitUploadAction(
     "/cancel",
-    uploadId,
+    {
+      uploadId
+    },
     "The server could not delete the uploaded file."
   );
 }
 
-async function submitUploadAction(url, uploadId, fallbackError) {
-  const result = await postJSON(url, { uploadId }, fallbackError);
+async function submitUploadAction(url, body, fallbackError) {
+  const result = await postJSON(url, body, fallbackError);
 
   if (result.ok) {
     return { ok: true };

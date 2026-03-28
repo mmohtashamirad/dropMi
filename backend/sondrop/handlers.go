@@ -210,6 +210,10 @@ func (s *server) handleConfirm(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if len(req.SelectedMetadata) > 0 {
+		Debugf("selected metadata for %q: %#v", uploadID, req.SelectedMetadata)
+	}
+
 	sourcePath := tempUploadPath(s.uploadTmpDir, uploadID)
 	if _, err := os.Stat(sourcePath); err != nil {
 		status := http.StatusInternalServerError
