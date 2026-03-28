@@ -16,6 +16,8 @@ func runEyeD3(parent context.Context, filePath string) (string, error) {
 		parent,
 		filePath,
 		"eyeD3",
+		"--plugin",
+		"json",
 		"--no-color",
 		"--no-config",
 	)
