@@ -1,6 +1,6 @@
 import { parseJSON, postJSON } from "/static/api.js";
 import { elements } from "/static/dom.js";
-import { setProgress, showScreen } from "/static/ui.js";
+import { setProgress, showScreen } from "/static/screen-ui.js";
 
 export function uploadFile(file, callbacks) {
   showScreen(elements.uploadScreen);

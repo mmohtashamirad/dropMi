@@ -3,17 +3,21 @@ import { login, logout } from "/static/auth-client.js";
 import {
   clearLoginError,
   hideSessionBar,
-  renderConfirmError,
   resetAuthenticatedUI,
-  resetDropMessage,
+  showLoginError,
+  showSessionBar
+} from "/static/auth-ui.js";
+import {
+  renderConfirmError,
   resetResultScreen,
+  showResult
+} from "/static/result-ui.js";
+import {
+  resetDropMessage,
   resetUploadScreen,
   setDraggingState,
-  showLoginError,
-  showResult,
-  showSessionBar,
   showScreen
-} from "/static/ui.js";
+} from "/static/screen-ui.js";
 import { cancelUpload, confirmUpload, uploadFile } from "/static/upload-client.js";
 
 let currentUploadId = "";
