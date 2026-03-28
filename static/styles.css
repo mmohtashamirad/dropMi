@@ -1,4 +1,30 @@
 :root {
+  color-scheme: dark;
+  --bg-top: #121820;
+  --bg-bottom: #243542;
+  --panel: rgba(18, 24, 31, 0.9);
+  --panel-border: rgba(214, 226, 236, 0.16);
+  --text: #edf3f6;
+  --muted: #a8b6bf;
+  --accent: #e09a62;
+  --success: #4eb77a;
+  --danger: #e07c73;
+  --shadow: 0 24px 70px rgba(6, 10, 14, 0.35);
+  --session-bg: rgba(18, 24, 31, 0.92);
+  --input-bg: rgba(255, 255, 255, 0.08);
+  --input-border: rgba(214, 226, 236, 0.18);
+  --secondary-bg: rgba(255, 255, 255, 0.08);
+  --secondary-text: #edf3f6;
+  --table-bg: rgba(10, 14, 18, 0.92);
+  --table-text: #f4efe8;
+  --table-header: #dbcdb9;
+  --table-border: rgba(244, 239, 232, 0.12);
+  --editable-bg: rgba(255, 255, 255, 0.06);
+  --editable-border: rgba(215, 202, 183, 0.25);
+  --body-glow: rgba(255, 255, 255, 0.08);
+}
+
+body[data-theme="light"] {
   color-scheme: light;
   --bg-top: #f7f3ea;
   --bg-bottom: #d8e6ef;
@@ -10,6 +36,18 @@
   --success: #2d8a57;
   --danger: #9d4439;
   --shadow: 0 24px 70px rgba(42, 59, 71, 0.15);
+  --session-bg: rgba(255, 252, 246, 0.92);
+  --input-bg: rgba(255, 255, 255, 0.9);
+  --input-border: rgba(43, 60, 74, 0.18);
+  --secondary-bg: #f0e5d5;
+  --secondary-text: #21303a;
+  --table-bg: rgba(33, 48, 58, 0.92);
+  --table-text: #f4efe8;
+  --table-header: #d7cab7;
+  --table-border: rgba(244, 239, 232, 0.12);
+  --editable-bg: rgba(255, 255, 255, 0.06);
+  --editable-border: rgba(215, 202, 183, 0.25);
+  --body-glow: rgba(255, 255, 255, 0.7);
 }
 
 * {
@@ -22,7 +60,7 @@ body {
   font-family: "Trebuchet MS", "Segoe UI", sans-serif;
   color: var(--text);
   background:
-    radial-gradient(circle at top, rgba(255, 255, 255, 0.7), transparent 35%),
+    radial-gradient(circle at top, var(--body-glow), transparent 35%),
     linear-gradient(160deg, var(--bg-top), var(--bg-bottom));
 }
 
@@ -43,7 +81,7 @@ body {
   gap: 14px;
   padding: 10px 14px;
   border-radius: 999px;
-  background: rgba(255, 252, 246, 0.92);
+  background: var(--session-bg);
   box-shadow: 0 12px 28px rgba(42, 59, 71, 0.12);
   z-index: 10;
 }
@@ -107,12 +145,12 @@ body {
 
 .text-input {
   width: 100%;
-  border: 1px solid rgba(43, 60, 74, 0.18);
+  border: 1px solid var(--input-border);
   border-radius: 16px;
   padding: 14px 16px;
   font: inherit;
   color: var(--text);
-  background: rgba(255, 255, 255, 0.9);
+  background: var(--input-bg);
 }
 
 .text-input:focus {
@@ -204,8 +242,8 @@ h1 {
 }
 
 .secondary-button {
-  background: #f0e5d5;
-  color: var(--text);
+  background: var(--secondary-bg);
+  color: var(--secondary-text);
 }
 
 .action-row {
@@ -258,8 +296,8 @@ h1 {
   border-collapse: collapse;
   overflow: hidden;
   border-radius: 20px;
-  background: rgba(33, 48, 58, 0.92);
-  color: #f4efe8;
+  background: var(--table-bg);
+  color: var(--table-text);
 }
 
 .result-table th,
@@ -267,14 +305,14 @@ h1 {
   padding: 16px 18px;
   text-align: left;
   vertical-align: top;
-  border-bottom: 1px solid rgba(244, 239, 232, 0.12);
+  border-bottom: 1px solid var(--table-border);
 }
 
 .result-table th {
   font-size: 0.88rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #d7cab7;
+  color: var(--table-header);
 }
 
 .result-table tr:last-child td {
@@ -291,12 +329,12 @@ h1 {
 .editable-value {
   width: 100%;
   min-width: 180px;
-  border: 1px solid rgba(215, 202, 183, 0.25);
+  border: 1px solid var(--editable-border);
   border-radius: 12px;
   padding: 10px 12px;
   font: inherit;
-  color: #f4efe8;
-  background: rgba(255, 255, 255, 0.06);
+  color: var(--table-text);
+  background: var(--editable-bg);
 }
 
 .editable-value:focus {

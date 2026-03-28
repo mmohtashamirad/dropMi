@@ -21,6 +21,7 @@ export const elements = {
   resultTableBody: document.getElementById("result-table-body"),
   sessionBar: document.getElementById("session-bar"),
   sessionUser: document.getElementById("session-user"),
+  themeToggleButton: document.getElementById("theme-toggle-button"),
   usernameInput: document.getElementById("username-input"),
   passwordInput: document.getElementById("password-input"),
   uploadFileName: document.getElementById("upload-file-name"),

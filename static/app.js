@@ -23,6 +23,9 @@ import { cancelUpload, confirmUpload, uploadFile } from "/static/upload-client.j
 let currentUploadId = "";
 let dragDepth = 0;
 let activeUpload = null;
+const themeStorageKey = "sondrop-theme";
+
+initializeTheme();
 
 elements.loginForm.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -46,6 +49,7 @@ elements.loginForm.addEventListener("submit", async (event) => {
 });
 
 elements.logoutButton.addEventListener("click", handleLogout);
+elements.themeToggleButton.addEventListener("click", toggleTheme);
 
 elements.dropZone.addEventListener("dragenter", (event) => {
   event.preventDefault();
@@ -200,4 +204,22 @@ async function handleLogout() {
   resetAuthenticatedUI();
   elements.passwordInput.value = "";
   showScreen(elements.loginScreen);
+}
+
+function initializeTheme() {
+  const storedTheme = localStorage.getItem(themeStorageKey);
+  const theme = storedTheme === "light" ? "light" : "dark";
+  applyTheme(theme);
+}
+
+function toggleTheme() {
+  const currentTheme = document.body.dataset.theme === "light" ? "light" : "dark";
+  const nextTheme = currentTheme === "dark" ? "light" : "dark";
+  applyTheme(nextTheme);
+  localStorage.setItem(themeStorageKey, nextTheme);
+}
+
+function applyTheme(theme) {
+  document.body.dataset.theme = theme;
+  elements.themeToggleButton.textContent = theme === "dark" ? "Light" : "Dark";
 }
