@@ -4,6 +4,9 @@ import "log"
 
 func main() {
 	command, cfg := parseConfig()
+	if err := setLogLevel(cfg.logLevel); err != nil {
+		log.Fatal(err)
+	}
 
 	authDB, err := openAuthDB(cfg.authDBPath)
 	if err != nil {
@@ -16,16 +19,17 @@ func main() {
 			log.Fatal(err)
 		}
 
-		log.Printf("created user %q in %s", command.username, cfg.authDBPath)
+		Infof("created user %q in %s", command.username, cfg.authDBPath)
 		return
 	}
 
 	app := newServer(cfg, authDB)
 
-	log.Printf("listening on http://localhost%s", cfg.addr)
-	log.Printf("upload temp dir: %s", cfg.uploadTmpDir)
-	log.Printf("upload dir: %s", cfg.uploadDir)
-	log.Printf("auth db: %s", cfg.authDBPath)
+	Infof("listening on http://localhost%s", cfg.addr)
+	Infof("upload temp dir: %s", cfg.uploadTmpDir)
+	Infof("upload dir: %s", cfg.uploadDir)
+	Infof("auth db: %s", cfg.authDBPath)
+	Infof("log level: %s", cfg.logLevel)
 
 	if err := app.listenAndServe(cfg.addr); err != nil {
 		log.Fatal(err)

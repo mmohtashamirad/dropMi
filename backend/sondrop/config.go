@@ -11,6 +11,7 @@ type config struct {
 	uploadDir    string
 	addr         string
 	authDBPath   string
+	logLevel     string
 }
 
 type commandConfig struct {
@@ -31,6 +32,7 @@ func parseConfig() (*commandConfig, config) {
 	flag.StringVar(&cfg.uploadDir, "u", "", "directory for confirmed uploaded files")
 	flag.StringVar(&cfg.addr, "addr", ":8080", "HTTP listen address")
 	flag.StringVar(&cfg.authDBPath, "auth-db", "./auth.db", "SQLite auth database path")
+	flag.StringVar(&cfg.logLevel, "log-level", "info", "backend log level: debug, info, warning, or error")
 	flag.Parse()
 
 	if cfg.uploadTmpDir == "" || cfg.uploadDir == "" {
@@ -51,6 +53,7 @@ func parseCreateUserCommand() (*commandConfig, config) {
 	createUserFlags.StringVar(&cmd.username, "username", "", "username to create")
 	createUserFlags.StringVar(&cmd.password, "password", "", "password to store for the user")
 	createUserFlags.StringVar(&cfg.authDBPath, "auth-db", "./auth.db", "SQLite auth database path")
+	createUserFlags.StringVar(&cfg.logLevel, "log-level", "info", "backend log level: debug, info, warning, or error")
 	createUserFlags.Parse(os.Args[2:])
 
 	if cmd.username == "" || cmd.password == "" {

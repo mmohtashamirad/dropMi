@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -29,7 +28,7 @@ func (s *server) handleLogin(w http.ResponseWriter, r *http.Request) {
 
 	ok, err := authenticateUser(s.authDB, req.Username, req.Password)
 	if err != nil {
-		log.Printf("authenticate user: %v", err)
+		Errorf("authenticate user: %v", err)
 		writeJSON(w, http.StatusInternalServerError, loginResponse{
 			Error: "Unable to check your login right now.",
 		})
@@ -37,6 +36,7 @@ func (s *server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !ok {
+		Warnf("failed login for username %q", req.Username)
 		writeJSON(w, http.StatusUnauthorized, loginResponse{
 			Error: "Incorrect username or password.",
 		})
@@ -45,7 +45,7 @@ func (s *server) handleLogin(w http.ResponseWriter, r *http.Request) {
 
 	token, err := s.sessions.create(req.Username)
 	if err != nil {
-		log.Printf("create session: %v", err)
+		Errorf("create session: %v", err)
 		writeJSON(w, http.StatusInternalServerError, loginResponse{
 			Error: "Unable to start your session.",
 		})
@@ -60,6 +60,7 @@ func (s *server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		SameSite: http.SameSiteLaxMode,
 	})
 
+	Infof("login successful for username %q", req.Username)
 	writeJSON(w, http.StatusOK, loginResponse{
 		OK: true,
 	})
@@ -85,6 +86,7 @@ func (s *server) handleLogout(w http.ResponseWriter, r *http.Request) {
 		SameSite: http.SameSiteLaxMode,
 	})
 
+	Infof("logout completed")
 	writeJSON(w, http.StatusOK, loginResponse{
 		OK: true,
 	})
@@ -117,10 +119,11 @@ func (s *server) handleUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer file.Close()
+	Debugf("received upload request for %q", header.Filename)
 
 	tempFile, tempPath, err := createTempUploadFile(s.uploadTmpDir, header.Filename)
 	if err != nil {
-		log.Printf("create temp file: %v", err)
+		Errorf("create temp file: %v", err)
 		writeJSON(w, http.StatusInternalServerError, analyzeResponse{
 			Error: "Unable to prepare the upload for analysis.",
 		})
@@ -128,12 +131,13 @@ func (s *server) handleUpload(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := saveUploadedFile(tempFile, file, tempPath); err != nil {
-		log.Printf("save upload: %v", err)
+		Errorf("save upload: %v", err)
 		writeJSON(w, http.StatusInternalServerError, analyzeResponse{
 			Error: "Unable to save the uploaded file.",
 		})
 		return
 	}
+	Debugf("saved upload to %s", tempPath)
 
 	output, runErr := runEyeD3(r.Context(), tempPath)
 	if runErr != nil {
@@ -151,6 +155,7 @@ func (s *server) handleUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	Infof("eyeD3 analysis completed for %q", header.Filename)
 	writeJSON(w, http.StatusOK, analyzeResponse{
 		UploadID: filepath.Base(tempPath),
 		FileName: header.Filename,
@@ -202,13 +207,14 @@ func (s *server) handleConfirm(w http.ResponseWriter, r *http.Request) {
 
 	destinationPath := finalUploadPath(s.uploadDir, uploadID)
 	if err := os.Rename(sourcePath, destinationPath); err != nil {
-		log.Printf("move upload: %v", err)
+		Errorf("move upload: %v", err)
 		writeJSON(w, http.StatusInternalServerError, confirmResponse{
 			Error: "Unable to move the uploaded file into the final upload directory.",
 		})
 		return
 	}
 
+	Infof("moved upload %q to %s", uploadID, destinationPath)
 	writeJSON(w, http.StatusOK, confirmResponse{
 		FileName: filepath.Base(destinationPath),
 		Message:  "File moved to upload directory.",
@@ -257,6 +263,7 @@ func (s *server) handleCancel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	Infof("deleted upload %q from temp storage", uploadID)
 	writeJSON(w, http.StatusOK, confirmResponse{
 		Message: "Uploaded file deleted.",
 	})

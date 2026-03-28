@@ -47,6 +47,12 @@ Short flags:
 - `-t`: temporary upload directory
 - `-u`: final upload directory
 
+Logging:
+- `-log-level debug`
+- `-log-level info`
+- `-log-level warning`
+- `-log-level error`
+
 ## Minimal Auth Step
 
 The current auth setup only adds a SQLite `users` table and a simple user-creation command.
