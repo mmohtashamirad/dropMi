@@ -52,14 +52,18 @@
           <p class="eyebrow">eyeD3 Result</p>
           <h1 class="screen-title">Analysis complete</h1>
           <p class="subtext" id="result-file-name"></p>
-          <section class="result-section">
-            <h2 class="result-heading">eyeD3</h2>
-            <pre class="result-output" id="eyed3-output"></pre>
-          </section>
-          <section class="result-section">
-            <h2 class="result-heading">songrec</h2>
-            <pre class="result-output" id="songrec-output"></pre>
-          </section>
+          <div class="result-table-wrap">
+            <table class="result-table">
+              <thead>
+                <tr>
+                  <th>Tag</th>
+                  <th>eyeD3</th>
+                  <th>songrec</th>
+                </tr>
+              </thead>
+              <tbody id="result-table-body"></tbody>
+            </table>
+          </div>
           <div class="action-row">
             <button class="secondary-button" id="cancel-result-button" type="button">Cancel</button>
             <button class="primary-button" id="ok-button" type="button">OK</button>
