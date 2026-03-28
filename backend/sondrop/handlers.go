@@ -139,27 +139,45 @@ func (s *server) handleUpload(w http.ResponseWriter, r *http.Request) {
 	}
 	Debugf("saved upload to %s", tempPath)
 
-	output, runErr := runEyeD3(r.Context(), tempPath)
-	if runErr != nil {
+	eyeD3Output, eyeD3Err := runEyeD3(r.Context(), tempPath)
+	if eyeD3Err != nil {
 		message := "eyeD3 could not analyze the file."
-		if errors.Is(runErr, context.DeadlineExceeded) {
+		if errors.Is(eyeD3Err, context.DeadlineExceeded) {
 			message = "eyeD3 took too long to analyze the file."
 		}
 
 		writeJSON(w, http.StatusInternalServerError, analyzeResponse{
 			UploadID: filepath.Base(tempPath),
 			FileName: header.Filename,
-			Output:   output,
+			Output:   eyeD3Output,
 			Error:    message,
 		})
 		return
 	}
 
 	Infof("eyeD3 analysis completed for %q", header.Filename)
+
+	songrecOutput, songrecErr := runSongRec(r.Context(), tempPath)
+	if songrecErr != nil {
+		message := "songrec could not analyze the file."
+		if errors.Is(songrecErr, context.DeadlineExceeded) {
+			message = "songrec took too long to analyze the file."
+		}
+
+		writeJSON(w, http.StatusInternalServerError, analyzeResponse{
+			UploadID: filepath.Base(tempPath),
+			FileName: header.Filename,
+			Output:   combineAnalysisOutput(eyeD3Output, songrecOutput),
+			Error:    message,
+		})
+		return
+	}
+
+	Infof("songrec analysis completed for %q", header.Filename)
 	writeJSON(w, http.StatusOK, analyzeResponse{
 		UploadID: filepath.Base(tempPath),
 		FileName: header.Filename,
-		Output:   output,
+		Output:   combineAnalysisOutput(eyeD3Output, songrecOutput),
 	})
 }
 

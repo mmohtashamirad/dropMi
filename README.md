@@ -83,7 +83,7 @@ Only a correct username and password can access the upload UI.
 - `backend/sondrop/server.go`: server construction and route registration
 - `backend/sondrop/handlers.go`: HTTP handlers
 - `backend/sondrop/auth.go`: SQLite auth and in-memory session logic
-- `backend/sondrop/eyed3.go`: `eyeD3` execution
+- `backend/sondrop/run_command.go`: command execution on the server.
 - `backend/sondrop/files.go`: upload file helpers and path validation
 - `backend/sondrop/responses.go`: request/response types and JSON helper
 - `static/`: frontend files served by the Go server
