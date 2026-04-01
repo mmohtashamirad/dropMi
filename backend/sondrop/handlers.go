@@ -93,7 +93,8 @@ func (s *server) handleLogout(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *server) handleUpload(w http.ResponseWriter, r *http.Request) {
-	if !s.requireAuth(w, r) {
+	username, ok := s.requireAuth(w, r)
+	if !ok {
 		return
 	}
 
@@ -121,7 +122,7 @@ func (s *server) handleUpload(w http.ResponseWriter, r *http.Request) {
 	defer file.Close()
 	Debugf("received upload request for %q", header.Filename)
 
-	tempFile, tempPath, err := createTempUploadFile(s.uploadTmpDir, header.Filename)
+	tempFile, tempPath, err := createTempUploadFile(tempUserDir(s.uploadTmpDir, username), header.Filename)
 	if err != nil {
 		Errorf("create temp file: %v", err)
 		writeJSON(w, http.StatusInternalServerError, analyzeResponse{
@@ -184,7 +185,8 @@ func (s *server) handleUpload(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *server) handleConfirm(w http.ResponseWriter, r *http.Request) {
-	if !s.requireAuth(w, r) {
+	username, ok := s.requireAuth(w, r)
+	if !ok {
 		return
 	}
 
@@ -214,23 +216,7 @@ func (s *server) handleConfirm(w http.ResponseWriter, r *http.Request) {
 		Debugf("selected metadata for %q: %#v", uploadID, req.SelectedMetadata)
 	}
 
-	cookie, err := r.Cookie(sessionCookieName)
-	if err != nil {
-		writeJSON(w, http.StatusUnauthorized, loginResponse{
-			Error: "Please log in first.",
-		})
-		return
-	}
-
-	username, ok := s.sessions.username(cookie.Value)
-	if !ok {
-		writeJSON(w, http.StatusUnauthorized, loginResponse{
-			Error: "Please log in first.",
-		})
-		return
-	}
-
-	sourcePath := tempUploadPath(s.uploadTmpDir, uploadID)
+	sourcePath := tempUploadPath(s.uploadTmpDir, username, uploadID)
 	if _, err := os.Stat(sourcePath); err != nil {
 		status := http.StatusInternalServerError
 		message := "Unable to find the uploaded file."
@@ -303,7 +289,8 @@ func (s *server) handleConfirm(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *server) handleCancel(w http.ResponseWriter, r *http.Request) {
-	if !s.requireAuth(w, r) {
+	username, ok := s.requireAuth(w, r)
+	if !ok {
 		return
 	}
 
@@ -329,7 +316,7 @@ func (s *server) handleCancel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sourcePath := tempUploadPath(s.uploadTmpDir, uploadID)
+	sourcePath := tempUploadPath(s.uploadTmpDir, username, uploadID)
 	if err := os.Remove(sourcePath); err != nil {
 		status := http.StatusInternalServerError
 		message := "Unable to delete the uploaded file."
@@ -350,21 +337,22 @@ func (s *server) handleCancel(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (s *server) requireAuth(w http.ResponseWriter, r *http.Request) bool {
+func (s *server) requireAuth(w http.ResponseWriter, r *http.Request) (string, bool) {
 	cookie, err := r.Cookie(sessionCookieName)
 	if err != nil {
 		writeJSON(w, http.StatusUnauthorized, loginResponse{
 			Error: "Please log in first.",
 		})
-		return false
+		return "", false
 	}
 
-	if _, ok := s.sessions.username(cookie.Value); !ok {
+	username, ok := s.sessions.username(cookie.Value)
+	if !ok {
 		writeJSON(w, http.StatusUnauthorized, loginResponse{
 			Error: "Please log in first.",
 		})
-		return false
+		return "", false
 	}
 
-	return true
+	return username, true
 }

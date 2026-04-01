@@ -11,6 +11,10 @@ import (
 )
 
 func createTempUploadFile(dir string, originalName string) (*os.File, string, error) {
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return nil, "", err
+	}
+
 	tempFile, err := os.CreateTemp(dir, "sondrop-*"+filepath.Ext(originalName))
 	if err != nil {
 		return nil, "", err
@@ -42,8 +46,17 @@ func validateUploadID(uploadID string) (string, error) {
 	return uploadID, nil
 }
 
-func tempUploadPath(dir string, uploadID string) string {
-	return filepath.Join(dir, uploadID)
+func tempUserDir(rootDir string, username string) string {
+	userPart := sanitizePathPart(username)
+	if userPart == "" {
+		userPart = "unknown_user"
+	}
+
+	return filepath.Join(rootDir, userPart)
+}
+
+func tempUploadPath(rootDir string, username string, uploadID string) string {
+	return filepath.Join(tempUserDir(rootDir, username), uploadID)
 }
 
 func finalUploadPath(dir string, uploadID string) string {
