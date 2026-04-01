@@ -229,6 +229,38 @@ func (s *server) handleConfirm(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var tempArtworkPath string
+	if artworkURL := req.SelectedMetadata["album_art"]; artworkURL != "" {
+		response, err := http.Head(artworkURL)
+		contentType := ""
+		if err == nil {
+			contentType = response.Header.Get("Content-Type")
+			response.Body.Close()
+		}
+
+		tempArtworkPath = artworkPathForAudio(sourcePath, detectArtworkExtension(artworkURL, contentType))
+		if err := downloadArtwork(artworkURL, tempArtworkPath); err != nil {
+			Errorf("download artwork: %v", err)
+			writeJSON(w, http.StatusInternalServerError, confirmResponse{
+				Error: "Unable to download the selected album art.",
+			})
+			return
+		}
+		Debugf("downloaded album art to %s", tempArtworkPath)
+	}
+
+	if len(req.SelectedMetadata) > 0 {
+		if _, err := applySelectedMetadata(r.Context(), sourcePath, req.SelectedMetadata, tempArtworkPath); err != nil {
+			Errorf("apply selected metadata: %v", err)
+			writeJSON(w, http.StatusInternalServerError, confirmResponse{
+				Error: "Unable to write the selected metadata to the uploaded file.",
+			})
+			return
+		}
+
+		Infof("applied selected metadata to %q", uploadID)
+	}
+
 	destinationPath := finalUploadPath(s.uploadDir, uploadID)
 	if err := os.Rename(sourcePath, destinationPath); err != nil {
 		Errorf("move upload: %v", err)
@@ -236,6 +268,19 @@ func (s *server) handleConfirm(w http.ResponseWriter, r *http.Request) {
 			Error: "Unable to move the uploaded file into the final upload directory.",
 		})
 		return
+	}
+
+	if tempArtworkPath != "" {
+		finalArtworkPath := artworkPathForAudio(destinationPath, filepath.Ext(tempArtworkPath))
+		if err := os.Rename(tempArtworkPath, finalArtworkPath); err != nil {
+			Errorf("move artwork: %v", err)
+			writeJSON(w, http.StatusInternalServerError, confirmResponse{
+				Error: "Unable to move the downloaded album art into the final upload directory.",
+			})
+			return
+		}
+
+		Infof("moved artwork for %q to %s", uploadID, finalArtworkPath)
 	}
 
 	Infof("moved upload %q to %s", uploadID, destinationPath)

@@ -31,6 +31,35 @@ func runSongRec(parent context.Context, filePath string) (string, error) {
 	)
 }
 
+func applySelectedMetadata(parent context.Context, filePath string, selectedMetadata map[string]string, artworkPath string) (string, error) {
+	var args []string
+
+	if artist := selectedMetadata["artist"]; artist != "" {
+		args = append(args, "-a", artist, "-b", artist)
+	}
+	if album := selectedMetadata["album"]; album != "" {
+		args = append(args, "-A", album)
+	}
+	if title := selectedMetadata["track_name"]; title != "" {
+		args = append(args, "-t", title)
+	}
+	if genre := selectedMetadata["genre"]; genre != "" {
+		args = append(args, "-G", genre)
+	}
+	if artworkPath != "" {
+		args = append(args, "--add-image", "/songs/"+filepath.Base(artworkPath)+":FRONT_COVER")
+	}
+
+	args = append(args, "--preserve-file-times")
+
+	return runMusicToolsCommand(
+		parent,
+		filePath,
+		"eyeD3",
+		args...,
+	)
+}
+
 func runMusicToolsCommand(parent context.Context, filePath string, tool string, args ...string) (string, error) {
 	ctx, cancel := context.WithTimeout(parent, 30*time.Second)
 	defer cancel()
