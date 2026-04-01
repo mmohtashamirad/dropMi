@@ -50,6 +50,32 @@ func finalUploadPath(dir string, uploadID string) string {
 	return filepath.Join(dir, uploadID)
 }
 
+func metadataDrivenUploadPath(rootDir string, username string, selectedMetadata map[string]string, sourcePath string, fallbackName string) string {
+	userPart := sanitizePathPart(username)
+	if userPart == "" {
+		userPart = "unknown_user"
+	}
+
+	artistPart := sanitizePathPart(selectedMetadata["artist"])
+	if artistPart == "" {
+		artistPart = "unknown_artist"
+	}
+
+	trackNamePart := sanitizePathPart(selectedMetadata["track_name"])
+	fileBase := artistPart
+	if trackNamePart != "" {
+		fileBase = artistPart + " - " + trackNamePart
+	}
+	if fileBase == "" {
+		fileBase = sanitizePathPart(fallbackName)
+	}
+	if fileBase == "" {
+		fileBase = "unknown_track"
+	}
+
+	return filepath.Join(rootDir, userPart, artistPart, fileBase+filepath.Ext(sourcePath))
+}
+
 func artworkPathForAudio(audioPath string, imageExt string) string {
 	baseName := strings.TrimSuffix(filepath.Base(audioPath), filepath.Ext(audioPath))
 	return filepath.Join(filepath.Dir(audioPath), baseName+imageExt)
@@ -107,4 +133,28 @@ func normalizeArtworkExtension(extension string) string {
 	}
 
 	return extension
+}
+
+func sanitizePathPart(value string) string {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return ""
+	}
+
+	replacer := strings.NewReplacer(
+		"/", "-",
+		"\\", "-",
+		":", "-",
+		"*", "",
+		"?", "",
+		"\"", "",
+		"<", "",
+		">", "",
+		"|", "-",
+	)
+
+	value = replacer.Replace(value)
+	value = strings.Join(strings.Fields(value), " ")
+	value = strings.Trim(value, ". ")
+	return value
 }

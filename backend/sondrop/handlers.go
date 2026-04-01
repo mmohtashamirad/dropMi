@@ -214,6 +214,22 @@ func (s *server) handleConfirm(w http.ResponseWriter, r *http.Request) {
 		Debugf("selected metadata for %q: %#v", uploadID, req.SelectedMetadata)
 	}
 
+	cookie, err := r.Cookie(sessionCookieName)
+	if err != nil {
+		writeJSON(w, http.StatusUnauthorized, loginResponse{
+			Error: "Please log in first.",
+		})
+		return
+	}
+
+	username, ok := s.sessions.username(cookie.Value)
+	if !ok {
+		writeJSON(w, http.StatusUnauthorized, loginResponse{
+			Error: "Please log in first.",
+		})
+		return
+	}
+
 	sourcePath := tempUploadPath(s.uploadTmpDir, uploadID)
 	if _, err := os.Stat(sourcePath); err != nil {
 		status := http.StatusInternalServerError
@@ -262,7 +278,15 @@ func (s *server) handleConfirm(w http.ResponseWriter, r *http.Request) {
 		Infof("applied selected metadata to %q", uploadID)
 	}
 
-	destinationPath := finalUploadPath(s.uploadDir, uploadID)
+	destinationPath := metadataDrivenUploadPath(s.uploadDir, username, req.SelectedMetadata, sourcePath, uploadID)
+	if err := os.MkdirAll(filepath.Dir(destinationPath), 0o755); err != nil {
+		Errorf("create final upload directory: %v", err)
+		writeJSON(w, http.StatusInternalServerError, confirmResponse{
+			Error: "Unable to prepare the final upload directory.",
+		})
+		return
+	}
+
 	if err := os.Rename(sourcePath, destinationPath); err != nil {
 		Errorf("move upload: %v", err)
 		writeJSON(w, http.StatusInternalServerError, confirmResponse{
