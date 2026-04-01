@@ -246,6 +246,7 @@ func (s *server) handleConfirm(w http.ResponseWriter, r *http.Request) {
 			})
 			return
 		}
+		defer os.Remove(tempArtworkPath)
 		Debugf("downloaded album art to %s", tempArtworkPath)
 	}
 
@@ -268,19 +269,6 @@ func (s *server) handleConfirm(w http.ResponseWriter, r *http.Request) {
 			Error: "Unable to move the uploaded file into the final upload directory.",
 		})
 		return
-	}
-
-	if tempArtworkPath != "" {
-		finalArtworkPath := artworkPathForAudio(destinationPath, filepath.Ext(tempArtworkPath))
-		if err := os.Rename(tempArtworkPath, finalArtworkPath); err != nil {
-			Errorf("move artwork: %v", err)
-			writeJSON(w, http.StatusInternalServerError, confirmResponse{
-				Error: "Unable to move the downloaded album art into the final upload directory.",
-			})
-			return
-		}
-
-		Infof("moved artwork for %q to %s", uploadID, finalArtworkPath)
 	}
 
 	Infof("moved upload %q to %s", uploadID, destinationPath)
