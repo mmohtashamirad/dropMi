@@ -1,5 +1,5 @@
-import { elements } from "/static/dom.js";
-import { resetDropMessage, setProgress, showScreen } from "/static/screen-ui.js";
+import { elements } from "/authorized/dom.js";
+import { resetDropMessage, setProgress, showScreen } from "/authorized/screen-ui.js";
 
 export function clearResultError() {
   const existingError = elements.resultScreen.querySelector(".result-error");
@@ -159,7 +159,7 @@ function parseEmbeddedJSON(text) {
 
   try {
     return JSON.parse(text.slice(start, end + 1));
-  } catch (error) {
+  } catch {
     return null;
   }
 }

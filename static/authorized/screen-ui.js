@@ -1,4 +1,4 @@
-import { elements } from "/static/dom.js";
+import { elements } from "/authorized/dom.js";
 
 export function setDraggingState(isDragging) {
   elements.dropZone.classList.toggle("is-dragging", isDragging);
@@ -9,7 +9,7 @@ export function setDraggingState(isDragging) {
 }
 
 export function showScreen(screen) {
-  [elements.loginScreen, elements.dropScreen, elements.uploadScreen, elements.resultScreen].forEach((element) => {
+  [elements.dropScreen, elements.uploadScreen, elements.resultScreen].forEach((element) => {
     element.classList.toggle("screen-active", element === screen);
   });
 }

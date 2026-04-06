@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SonDrop</title>
-    <link rel="stylesheet" href="/static/styles.css" />
+    <link rel="stylesheet" href="/authorized/styles.css" />
   </head>
   <body data-theme="dark">
     <main class="page-shell">
@@ -15,20 +15,7 @@
       </div>
 
       <section class="panel">
-        <div class="screen screen-active" id="login-screen">
-          <p class="eyebrow">SonDrop</p>
-          <h1 class="screen-title">Sign in</h1>
-          <form class="login-form" id="login-form">
-            <label class="field-label" for="username-input">Username</label>
-            <input class="text-input" id="username-input" name="username" type="text" autocomplete="username" required />
-            <label class="field-label" for="password-input">Password</label>
-            <input class="text-input" id="password-input" name="password" type="password" autocomplete="current-password" required />
-            <p class="form-error" id="login-error" hidden></p>
-            <button class="primary-button" id="login-button" type="submit">Log in</button>
-          </form>
-        </div>
-
-        <div class="screen" id="drop-screen">
+        <div class="screen screen-active" id="drop-screen">
           <div class="drop-zone" id="drop-zone">
             <p class="eyebrow">SonDrop</p>
             <h1 id="drop-title">Drop your MP3 file here</h1>
@@ -81,6 +68,6 @@
       </div>
     </template>
 
-    <script type="module" src="/static/app.js"></script>
+    <script type="module" src="/authorized/app.js"></script>
   </body>
 </html>

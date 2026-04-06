@@ -1,24 +1,4 @@
-import { postJSON } from "/static/api.js";
-
-export async function login(username, password) {
-  const result = await postJSON(
-    "/login",
-    { username, password },
-    "Login failed."
-  );
-
-  if (result.ok) {
-    return {
-      ok: true,
-      username: result.data.username || username.trim()
-    };
-  }
-
-  return {
-    ok: false,
-    error: result.error
-  };
-}
+import { postJSON } from "/authorized/api.js";
 
 export async function checkSession() {
   try {

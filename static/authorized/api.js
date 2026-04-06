@@ -17,7 +17,7 @@ export async function postJSON(url, body, fallbackError) {
       ok: false,
       error: payload?.error || fallbackError
     };
-  } catch (error) {
+  } catch {
     return {
       ok: false,
       error: "The browser could not reach the server."
@@ -28,7 +28,7 @@ export async function postJSON(url, body, fallbackError) {
 export function parseJSON(text) {
   try {
     return JSON.parse(text);
-  } catch (error) {
+  } catch {
     return null;
   }
 }

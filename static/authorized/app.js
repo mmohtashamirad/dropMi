@@ -1,25 +1,23 @@
-import { elements } from "/static/dom.js";
-import { checkSession, login, logout } from "/static/auth-client.js";
+import { elements } from "/authorized/dom.js";
+import { checkSession, logout } from "/authorized/auth-client.js";
 import {
-  clearLoginError,
   hideSessionBar,
   resetAuthenticatedUI,
-  showLoginError,
   showSessionBar
-} from "/static/auth-ui.js";
+} from "/authorized/auth-ui.js";
 import {
   getSelectedMetadata,
   renderConfirmError,
   resetResultScreen,
   showResult
-} from "/static/result-ui.js";
+} from "/authorized/result-ui.js";
 import {
   resetDropMessage,
   resetUploadScreen,
   setDraggingState,
   showScreen
-} from "/static/screen-ui.js";
-import { cancelUpload, confirmUpload, uploadFile } from "/static/upload-client.js";
+} from "/authorized/screen-ui.js";
+import { cancelUpload, confirmUpload, uploadFile } from "/authorized/upload-client.js";
 
 let currentUploadId = "";
 let dragDepth = 0;
@@ -28,27 +26,6 @@ const themeStorageKey = "sondrop-theme";
 
 initializeTheme();
 initializeApp();
-
-elements.loginForm.addEventListener("submit", async (event) => {
-  event.preventDefault();
-  clearLoginError();
-  elements.loginButton.disabled = true;
-  elements.loginButton.textContent = "Logging in...";
-
-  const result = await login(elements.usernameInput.value, elements.passwordInput.value);
-  if (!result.ok) {
-    showLoginError(result.error);
-    elements.loginButton.disabled = false;
-    elements.loginButton.textContent = "Log in";
-    return;
-  }
-
-  showSessionBar(result.username);
-  elements.passwordInput.value = "";
-  elements.loginButton.disabled = false;
-  elements.loginButton.textContent = "Log in";
-  showScreen(elements.dropScreen);
-});
 
 elements.logoutButton.addEventListener("click", handleLogout);
 elements.themeToggleButton.addEventListener("click", toggleTheme);
@@ -201,23 +178,20 @@ async function handleLogout() {
   activeUpload = null;
   currentUploadId = "";
   dragDepth = 0;
-  clearLoginError();
   hideSessionBar();
   resetAuthenticatedUI();
-  elements.passwordInput.value = "";
-  showScreen(elements.loginScreen);
+  window.location.assign("/");
 }
 
 async function initializeApp() {
   const session = await checkSession();
-  if (session.authenticated) {
-    showSessionBar(session.username);
-    showScreen(elements.dropScreen);
+  if (!session.authenticated) {
+    window.location.replace("/");
     return;
   }
 
-  hideSessionBar();
-  showScreen(elements.loginScreen);
+  showSessionBar(session.username);
+  showScreen(elements.dropScreen);
 }
 
 function initializeTheme() {
