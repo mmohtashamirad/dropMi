@@ -62,7 +62,29 @@ func (s *server) handleLogin(w http.ResponseWriter, r *http.Request) {
 
 	Infof("login successful for username %q", req.Username)
 	writeJSON(w, http.StatusOK, loginResponse{
-		OK: true,
+		OK:       true,
+		Username: req.Username,
+	})
+}
+
+func (s *server) handleSession(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.Header().Set("Allow", http.MethodGet)
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	username, ok := s.authenticatedUsername(r)
+	if !ok {
+		writeJSON(w, http.StatusOK, sessionResponse{
+			Authenticated: false,
+		})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, sessionResponse{
+		Authenticated: true,
+		Username:      username,
 	})
 }
 
@@ -338,21 +360,23 @@ func (s *server) handleCancel(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *server) requireAuth(w http.ResponseWriter, r *http.Request) (string, bool) {
+	username, ok := s.authenticatedUsername(r)
+	if ok {
+		return username, true
+	}
+
+	writeJSON(w, http.StatusUnauthorized, loginResponse{
+		Error: "Please log in first.",
+	})
+	return "", false
+}
+
+func (s *server) authenticatedUsername(r *http.Request) (string, bool) {
 	cookie, err := r.Cookie(sessionCookieName)
 	if err != nil {
-		writeJSON(w, http.StatusUnauthorized, loginResponse{
-			Error: "Please log in first.",
-		})
 		return "", false
 	}
 
 	username, ok := s.sessions.username(cookie.Value)
-	if !ok {
-		writeJSON(w, http.StatusUnauthorized, loginResponse{
-			Error: "Please log in first.",
-		})
-		return "", false
-	}
-
-	return username, true
+	return username, ok
 }

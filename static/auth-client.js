@@ -8,13 +8,36 @@ export async function login(username, password) {
   );
 
   if (result.ok) {
-    return { ok: true };
+    return {
+      ok: true,
+      username: result.data.username || username.trim()
+    };
   }
 
   return {
     ok: false,
     error: result.error
   };
+}
+
+export async function checkSession() {
+  try {
+    const response = await fetch("/session", {
+      method: "GET",
+      credentials: "same-origin"
+    });
+
+    const data = await response.json();
+    return {
+      authenticated: Boolean(data.authenticated),
+      username: data.username || ""
+    };
+  } catch {
+    return {
+      authenticated: false,
+      username: ""
+    };
+  }
 }
 
 export async function logout() {

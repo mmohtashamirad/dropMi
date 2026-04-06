@@ -27,6 +27,7 @@ func (s *server) routes() http.Handler {
 	fileServer := http.FileServer(http.Dir("./static"))
 	mux.Handle("/static/", http.StripPrefix("/static/", fileServer))
 	mux.HandleFunc("/login", s.handleLogin)
+	mux.HandleFunc("/session", s.handleSession)
 	mux.HandleFunc("/logout", s.handleLogout)
 	mux.HandleFunc("/upload", s.handleUpload)
 	mux.HandleFunc("/confirm", s.handleConfirm)

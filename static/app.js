@@ -1,5 +1,5 @@
 import { elements } from "/static/dom.js";
-import { login, logout } from "/static/auth-client.js";
+import { checkSession, login, logout } from "/static/auth-client.js";
 import {
   clearLoginError,
   hideSessionBar,
@@ -27,6 +27,7 @@ let activeUpload = null;
 const themeStorageKey = "sondrop-theme";
 
 initializeTheme();
+initializeApp();
 
 elements.loginForm.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -42,7 +43,7 @@ elements.loginForm.addEventListener("submit", async (event) => {
     return;
   }
 
-  showSessionBar(elements.usernameInput.value.trim());
+  showSessionBar(result.username);
   elements.passwordInput.value = "";
   elements.loginButton.disabled = false;
   elements.loginButton.textContent = "Log in";
@@ -204,6 +205,18 @@ async function handleLogout() {
   hideSessionBar();
   resetAuthenticatedUI();
   elements.passwordInput.value = "";
+  showScreen(elements.loginScreen);
+}
+
+async function initializeApp() {
+  const session = await checkSession();
+  if (session.authenticated) {
+    showSessionBar(session.username);
+    showScreen(elements.dropScreen);
+    return;
+  }
+
+  hideSessionBar();
   showScreen(elements.loginScreen);
 }
 
