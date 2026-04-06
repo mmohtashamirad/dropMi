@@ -18,7 +18,7 @@ RUN wget -qO- 'http://keyserver.ubuntu.com/pks/lookup?op=get&search=0x6888550b2f
     && apt install -y songrec \
     && rm -rf /var/lib/apt/lists/*
 
-RUN pip3 install --break-system-packages eyeD3
+RUN pip3 install --break-system-packages eyeD3 lrcup
 
 WORKDIR /songs
 
