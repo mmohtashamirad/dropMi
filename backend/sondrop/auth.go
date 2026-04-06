@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"strings"
-	"sync"
 
 	_ "modernc.org/sqlite"
 )
@@ -14,8 +13,7 @@ import (
 const sessionCookieName = "sondrop_session"
 
 type sessionStore struct {
-	mu       sync.RWMutex
-	sessions map[string]string
+	db *sql.DB
 }
 
 func openAuthDB(path string) (*sql.DB, error) {
@@ -33,7 +31,7 @@ func openAuthDB(path string) (*sql.DB, error) {
 }
 
 func ensureAuthSchema(db *sql.DB) error {
-	const query = `
+	const usersQuery = `
 		CREATE TABLE IF NOT EXISTS users (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			username TEXT NOT NULL UNIQUE,
@@ -41,8 +39,20 @@ func ensureAuthSchema(db *sql.DB) error {
 		);
 	`
 
-	if _, err := db.Exec(query); err != nil {
+	if _, err := db.Exec(usersQuery); err != nil {
 		return fmt.Errorf("ensure auth schema: %w", err)
+	}
+
+	const sessionsQuery = `
+		CREATE TABLE IF NOT EXISTS sessions (
+			token TEXT PRIMARY KEY,
+			username TEXT NOT NULL,
+			created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+		);
+	`
+
+	if _, err := db.Exec(sessionsQuery); err != nil {
+		return fmt.Errorf("ensure session schema: %w", err)
 	}
 
 	return nil
@@ -83,9 +93,9 @@ func authenticateUser(db *sql.DB, username string, password string) (bool, error
 	return storedPassword == password, nil
 }
 
-func newSessionStore() *sessionStore {
+func newSessionStore(db *sql.DB) *sessionStore {
 	return &sessionStore{
-		sessions: make(map[string]string),
+		db: db,
 	}
 }
 
@@ -97,22 +107,33 @@ func (s *sessionStore) create(username string) (string, error) {
 
 	token := hex.EncodeToString(tokenBytes)
 
-	s.mu.Lock()
-	s.sessions[token] = username
-	s.mu.Unlock()
+	if _, err := s.db.Exec(
+		`INSERT INTO sessions (token, username) VALUES (?, ?)`,
+		token,
+		username,
+	); err != nil {
+		return "", fmt.Errorf("store session: %w", err)
+	}
 
 	return token, nil
 }
 
 func (s *sessionStore) username(token string) (string, bool) {
-	s.mu.RLock()
-	username, ok := s.sessions[token]
-	s.mu.RUnlock()
-	return username, ok
+	var username string
+	err := s.db.QueryRow(`SELECT username FROM sessions WHERE token = ?`, token).Scan(&username)
+	if err == sql.ErrNoRows {
+		return "", false
+	}
+	if err != nil {
+		Errorf("lookup session %q: %v", token, err)
+		return "", false
+	}
+
+	return username, true
 }
 
 func (s *sessionStore) delete(token string) {
-	s.mu.Lock()
-	delete(s.sessions, token)
-	s.mu.Unlock()
+	if _, err := s.db.Exec(`DELETE FROM sessions WHERE token = ?`, token); err != nil {
+		Errorf("delete session %q: %v", token, err)
+	}
 }

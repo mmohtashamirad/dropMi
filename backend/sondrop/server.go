@@ -17,7 +17,7 @@ func newServer(cfg config, authDB *sql.DB) *server {
 		uploadTmpDir: cfg.uploadTmpDir,
 		uploadDir:    cfg.uploadDir,
 		authDB:       authDB,
-		sessions:     newSessionStore(),
+		sessions:     newSessionStore(authDB),
 	}
 }
 
