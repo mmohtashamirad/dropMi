@@ -20,6 +20,7 @@ export function showResult(payload, isError) {
   showScreen(elements.resultScreen);
   elements.resultFileName.textContent = payload.fileName ? `File: ${payload.fileName}` : "";
   renderComparisonTable(payload.eyeD3Output, payload.songrecOutput);
+  renderLyricsOptions(payload.lyricsOptions || []);
   clearResultError();
 
   if (payload.error) {
@@ -34,6 +35,8 @@ export function showResult(payload, isError) {
 export function resetResultScreen() {
   elements.resultFileName.textContent = "";
   elements.resultTableBody.innerHTML = "";
+  elements.lyricsOptions.innerHTML = "";
+  elements.lyricsSection.hidden = true;
   resetDropMessage();
   clearResultError();
   elements.fileInput.value = "";
@@ -69,6 +72,41 @@ function renderComparisonTable(eyeD3Output, songrecOutput) {
     row.appendChild(createValueCell(songrecValue));
     row.appendChild(createEditableCell(label, songrecValue || eyeD3Value || ""));
     elements.resultTableBody.appendChild(row);
+  });
+}
+
+function renderLyricsOptions(options) {
+  elements.lyricsOptions.innerHTML = "";
+
+  if (!Array.isArray(options) || options.length === 0) {
+    elements.lyricsSection.hidden = true;
+    return;
+  }
+
+  elements.lyricsSection.hidden = false;
+
+  options.forEach((option) => {
+    const item = document.createElement("details");
+    item.className = "lyrics-option";
+
+    const summary = document.createElement("summary");
+    summary.className = "lyrics-summary";
+    summary.textContent = option.title || "Lyrics option";
+    item.appendChild(summary);
+
+    const meta = document.createElement("p");
+    meta.className = "lyrics-meta";
+    meta.textContent = [option.artist, option.album].filter(Boolean).join(" · ");
+    if (meta.textContent) {
+      item.appendChild(meta);
+    }
+
+    const body = document.createElement("pre");
+    body.className = "lyrics-body";
+    body.textContent = option.syncedLyrics || option.plainLyrics || "No lyrics available.";
+    item.appendChild(body);
+
+    elements.lyricsOptions.appendChild(item);
   });
 }
 

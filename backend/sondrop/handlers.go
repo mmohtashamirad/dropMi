@@ -198,11 +198,18 @@ func (s *server) handleUpload(w http.ResponseWriter, r *http.Request) {
 	}
 
 	Infof("songrec analysis completed for %q", header.Filename)
+
+	lyricsOptions, lyricsErr := findLyricsOptions(r.Context(), eyeD3Output, songrecOutput)
+	if lyricsErr != nil {
+		Warnf("LRCLIB search failed for %q: %v", header.Filename, lyricsErr)
+	}
+
 	writeJSON(w, http.StatusOK, analyzeResponse{
 		UploadID:      filepath.Base(tempPath),
 		FileName:      header.Filename,
 		EyeD3Output:   eyeD3Output,
 		SongrecOutput: songrecOutput,
+		LyricsOptions: lyricsOptions,
 	})
 }
 

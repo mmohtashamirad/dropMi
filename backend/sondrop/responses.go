@@ -7,11 +7,12 @@ import (
 )
 
 type analyzeResponse struct {
-	UploadID     string `json:"uploadId,omitempty"`
-	FileName     string `json:"fileName"`
-	EyeD3Output  string `json:"eyeD3Output,omitempty"`
-	SongrecOutput string `json:"songrecOutput,omitempty"`
-	Error        string `json:"error,omitempty"`
+	UploadID      string         `json:"uploadId,omitempty"`
+	FileName      string         `json:"fileName"`
+	EyeD3Output   string         `json:"eyeD3Output,omitempty"`
+	SongrecOutput string         `json:"songrecOutput,omitempty"`
+	LyricsOptions []lyricsOption `json:"lyricsOptions,omitempty"`
+	Error         string         `json:"error,omitempty"`
 }
 
 type loginRequest struct {
@@ -39,6 +40,14 @@ type confirmResponse struct {
 	FileName string `json:"fileName,omitempty"`
 	Message  string `json:"message,omitempty"`
 	Error    string `json:"error,omitempty"`
+}
+
+type lyricsOption struct {
+	Title        string `json:"title"`
+	Artist       string `json:"artist,omitempty"`
+	Album        string `json:"album,omitempty"`
+	SyncedLyrics string `json:"syncedLyrics,omitempty"`
+	PlainLyrics  string `json:"plainLyrics,omitempty"`
 }
 
 func writeJSON(w http.ResponseWriter, status int, payload any) {

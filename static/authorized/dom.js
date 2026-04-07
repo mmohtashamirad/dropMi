@@ -7,6 +7,8 @@ export const elements = {
   dropTitle: document.getElementById("drop-title"),
   dropZone: document.getElementById("drop-zone"),
   fileInput: document.getElementById("file-input"),
+  lyricsOptions: document.getElementById("lyrics-options"),
+  lyricsSection: document.getElementById("lyrics-section"),
   logoutButton: document.getElementById("logout-button"),
   okButton: document.getElementById("ok-button"),
   progressFill: document.getElementById("progress-fill"),

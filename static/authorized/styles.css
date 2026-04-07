@@ -256,6 +256,61 @@ h1 {
   overflow-x: auto;
 }
 
+.lyrics-section {
+  width: 100%;
+  margin-top: 24px;
+  text-align: left;
+}
+
+.lyrics-section-header {
+  margin-bottom: 12px;
+}
+
+.lyrics-title {
+  margin: 8px 0 0;
+  font-size: 1.2rem;
+  line-height: 1.2;
+}
+
+.lyrics-options {
+  display: grid;
+  gap: 10px;
+}
+
+.lyrics-option {
+  border: 1px solid var(--panel-border);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.04);
+  overflow: hidden;
+}
+
+.lyrics-summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 14px 16px;
+  font-weight: 700;
+}
+
+.lyrics-summary::-webkit-details-marker {
+  display: none;
+}
+
+.lyrics-meta {
+  margin: 0;
+  padding: 0 16px 12px;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.lyrics-body {
+  margin: 0;
+  padding: 0 16px 16px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font: inherit;
+  color: var(--text);
+}
+
 .result-table {
   width: 100%;
   border-collapse: collapse;
