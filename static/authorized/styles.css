@@ -295,6 +295,19 @@ h1 {
   display: none;
 }
 
+.lyrics-selector {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 16px 12px;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.lyrics-selector input {
+  margin: 0;
+}
+
 .lyrics-meta {
   margin: 0;
   padding: 0 16px 12px;

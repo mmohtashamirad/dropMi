@@ -6,6 +6,7 @@ import {
   showSessionBar
 } from "/authorized/auth-ui.js";
 import {
+  getSelectedLyricsOption,
   getSelectedMetadata,
   renderConfirmError,
   resetResultScreen,
@@ -86,7 +87,11 @@ elements.okButton.addEventListener("click", async () => {
   elements.okButton.textContent = "Moving file...";
 
   if (currentUploadId) {
-    const confirmation = await confirmUpload(currentUploadId, getSelectedMetadata());
+    const confirmation = await confirmUpload(
+      currentUploadId,
+      getSelectedMetadata(),
+      getSelectedLyricsOption()
+    );
     if (!confirmation.ok) {
       renderConfirmError(confirmation.error);
       elements.okButton.disabled = false;

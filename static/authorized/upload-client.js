@@ -59,12 +59,13 @@ export function uploadFile(file, callbacks) {
   };
 }
 
-export async function confirmUpload(uploadId, selectedMetadata) {
+export async function confirmUpload(uploadId, selectedMetadata, selectedLyrics) {
   return submitUploadAction(
     "/confirm",
     {
       uploadId,
-      selectedMetadata
+      selectedMetadata,
+      selectedLyrics
     },
     "The server could not move the file into the upload directory."
   );

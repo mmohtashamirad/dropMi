@@ -34,6 +34,7 @@ type sessionResponse struct {
 type confirmRequest struct {
 	UploadID         string            `json:"uploadId"`
 	SelectedMetadata map[string]string `json:"selectedMetadata,omitempty"`
+	SelectedLyrics   *lyricsOption     `json:"selectedLyrics,omitempty"`
 }
 
 type confirmResponse struct {

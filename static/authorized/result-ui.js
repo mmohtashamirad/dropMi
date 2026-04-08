@@ -53,6 +53,19 @@ export function getSelectedMetadata() {
   return metadata;
 }
 
+export function getSelectedLyricsOption() {
+  const selected = elements.lyricsOptions.querySelector('input[name="selected-lyrics-option"]:checked');
+  if (!selected) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(selected.value);
+  } catch {
+    return null;
+  }
+}
+
 function renderComparisonTable(eyeD3Output, songrecOutput) {
   const eyeD3Data = extractEyeD3Fields(eyeD3Output);
   const songrecData = extractSongrecFields(songrecOutput);
@@ -91,8 +104,22 @@ function renderLyricsOptions(options) {
 
     const summary = document.createElement("summary");
     summary.className = "lyrics-summary";
-    summary.textContent = option.title || "Lyrics option";
+    const summaryTitle = document.createElement("span");
+    summaryTitle.textContent = option.title || "Lyrics option";
+    summary.appendChild(summaryTitle);
     item.appendChild(summary);
+
+    const selectorRow = document.createElement("label");
+    selectorRow.className = "lyrics-selector";
+    const radio = document.createElement("input");
+    radio.type = "radio";
+    radio.name = "selected-lyrics-option";
+    radio.value = JSON.stringify(option);
+    selectorRow.appendChild(radio);
+    const selectorText = document.createElement("span");
+    selectorText.textContent = "Use these lyrics";
+    selectorRow.appendChild(selectorText);
+    item.appendChild(selectorRow);
 
     const meta = document.createElement("p");
     meta.className = "lyrics-meta";

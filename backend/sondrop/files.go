@@ -94,6 +94,11 @@ func artworkPathForAudio(audioPath string, imageExt string) string {
 	return filepath.Join(filepath.Dir(audioPath), baseName+imageExt)
 }
 
+func lyricsPathForAudio(audioPath string) string {
+	baseName := strings.TrimSuffix(filepath.Base(audioPath), filepath.Ext(audioPath))
+	return filepath.Join(filepath.Dir(audioPath), baseName+".lyrics.txt")
+}
+
 func downloadArtwork(url string, destinationPath string) error {
 	response, err := http.Get(url)
 	if err != nil {

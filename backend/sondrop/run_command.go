@@ -32,6 +32,10 @@ func runSongRec(parent context.Context, filePath string) (string, error) {
 }
 
 func applySelectedMetadata(parent context.Context, filePath string, selectedMetadata map[string]string, artworkPath string) (string, error) {
+	return applySelectedMetadataWithLyrics(parent, filePath, selectedMetadata, artworkPath, "")
+}
+
+func applySelectedMetadataWithLyrics(parent context.Context, filePath string, selectedMetadata map[string]string, artworkPath string, lyricsPath string) (string, error) {
 	var args []string
 
 	if artist := selectedMetadata["artist"]; artist != "" {
@@ -48,6 +52,9 @@ func applySelectedMetadata(parent context.Context, filePath string, selectedMeta
 	}
 	if artworkPath != "" {
 		args = append(args, "--add-image", "/songs/"+filepath.Base(artworkPath)+":FRONT_COVER")
+	}
+	if lyricsPath != "" {
+		args = append(args, "--add-lyrics", "/songs/"+filepath.Base(lyricsPath))
 	}
 
 	args = append(args, "--preserve-file-times")

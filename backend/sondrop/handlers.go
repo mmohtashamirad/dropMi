@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 const maxUploadSize = 100 << 20
@@ -281,8 +282,25 @@ func (s *server) handleConfirm(w http.ResponseWriter, r *http.Request) {
 		Debugf("downloaded album art to %s", tempArtworkPath)
 	}
 
-	if len(req.SelectedMetadata) > 0 {
-		if _, err := applySelectedMetadata(r.Context(), sourcePath, req.SelectedMetadata, tempArtworkPath); err != nil {
+	var tempLyricsPath string
+	if req.SelectedLyrics != nil {
+		lyricsBody := strings.TrimSpace(firstNonEmpty(req.SelectedLyrics.SyncedLyrics, req.SelectedLyrics.PlainLyrics))
+		if lyricsBody != "" {
+			tempLyricsPath = lyricsPathForAudio(sourcePath)
+			if err := os.WriteFile(tempLyricsPath, []byte(lyricsBody), 0o600); err != nil {
+				Errorf("write lyrics file: %v", err)
+				writeJSON(w, http.StatusInternalServerError, confirmResponse{
+					Error: "Unable to prepare the selected lyrics for tagging.",
+				})
+				return
+			}
+			defer os.Remove(tempLyricsPath)
+			Debugf("prepared lyrics file at %s", tempLyricsPath)
+		}
+	}
+
+	if len(req.SelectedMetadata) > 0 || tempArtworkPath != "" || tempLyricsPath != "" {
+		if _, err := applySelectedMetadataWithLyrics(r.Context(), sourcePath, req.SelectedMetadata, tempArtworkPath, tempLyricsPath); err != nil {
 			Errorf("apply selected metadata: %v", err)
 			writeJSON(w, http.StatusInternalServerError, confirmResponse{
 				Error: "Unable to write the selected metadata to the uploaded file.",
