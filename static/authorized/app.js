@@ -10,6 +10,7 @@ import {
   getSelectedMetadata,
   renderConfirmError,
   resetResultScreen,
+  setLyricsOptions,
   showResult
 } from "/authorized/result-ui.js";
 import {
@@ -18,7 +19,7 @@ import {
   setDraggingState,
   showScreen
 } from "/authorized/screen-ui.js";
-import { cancelUpload, confirmUpload, uploadFile } from "/authorized/upload-client.js";
+import { cancelUpload, confirmUpload, findLyrics, uploadFile } from "/authorized/upload-client.js";
 
 let currentUploadId = "";
 let dragDepth = 0;
@@ -79,6 +80,24 @@ elements.cancelUploadButton.addEventListener("click", () => {
   }
 
   activeUpload.abort();
+});
+
+elements.findLyricsButton.addEventListener("click", async () => {
+  elements.findLyricsButton.disabled = true;
+  elements.findLyricsButton.textContent = "Finding lyrics...";
+  clearTransientResultError();
+
+  const result = await findLyrics(getSelectedMetadata());
+  if (!result.ok) {
+    renderConfirmError(result.error);
+    elements.findLyricsButton.disabled = false;
+    elements.findLyricsButton.textContent = "Find lyrics";
+    return;
+  }
+
+  setLyricsOptions(result.payload?.lyricsOptions || []);
+  elements.findLyricsButton.disabled = false;
+  elements.findLyricsButton.textContent = "Find lyrics";
 });
 
 elements.okButton.addEventListener("click", async () => {
@@ -169,8 +188,10 @@ function finishResultAction() {
   showScreen(elements.dropScreen);
   elements.okButton.disabled = false;
   elements.cancelResultButton.disabled = false;
+  elements.findLyricsButton.disabled = false;
   elements.okButton.textContent = "OK";
   elements.cancelResultButton.textContent = "Cancel";
+  elements.findLyricsButton.textContent = "Find lyrics";
 }
 
 async function handleLogout() {
@@ -215,4 +236,11 @@ function toggleTheme() {
 function applyTheme(theme) {
   document.body.dataset.theme = theme;
   elements.themeToggleButton.textContent = theme === "dark" ? "Light" : "Dark";
+}
+
+function clearTransientResultError() {
+  const error = elements.resultScreen.querySelector(".result-error");
+  if (error) {
+    error.remove();
+  }
 }

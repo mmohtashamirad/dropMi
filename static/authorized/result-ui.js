@@ -42,6 +42,10 @@ export function resetResultScreen() {
   elements.fileInput.value = "";
 }
 
+export function setLyricsOptions(options) {
+  renderLyricsOptions(options || []);
+}
+
 export function getSelectedMetadata() {
   const metadata = {};
   const inputs = elements.resultTableBody.querySelectorAll("[data-selected-tag]");

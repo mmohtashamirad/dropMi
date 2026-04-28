@@ -71,6 +71,16 @@ export async function confirmUpload(uploadId, selectedMetadata, selectedLyrics) 
   );
 }
 
+export async function findLyrics(selectedMetadata) {
+  return submitUploadAction(
+    "/lyrics/search",
+    {
+      selectedMetadata
+    },
+    "The server could not search for lyrics."
+  );
+}
+
 export async function cancelUpload(uploadId) {
   return submitUploadAction(
     "/cancel",
@@ -85,7 +95,10 @@ async function submitUploadAction(url, body, fallbackError) {
   const result = await postJSON(url, body, fallbackError);
 
   if (result.ok) {
-    return { ok: true };
+    return {
+      ok: true,
+      payload: result.payload
+    };
   }
 
   return {

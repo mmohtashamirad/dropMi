@@ -36,6 +36,20 @@ func findLyricsOptions(parent context.Context, eyeD3Output string, songrecOutput
 	return searchLRCLIB(parent, metadata)
 }
 
+func findLyricsOptionsFromSelectedMetadata(parent context.Context, selectedMetadata map[string]string) ([]lyricsOption, error) {
+	metadata := analyzedMetadata{
+		Artist:    firstNonEmpty(selectedMetadata["artist"]),
+		TrackName: firstNonEmpty(selectedMetadata["track_name"]),
+		Album:     firstNonEmpty(selectedMetadata["album"]),
+	}
+
+	if metadata.TrackName == "" || metadata.Artist == "" {
+		return nil, nil
+	}
+
+	return searchLRCLIB(parent, metadata)
+}
+
 func deriveAnalyzedMetadata(eyeD3Output string, songrecOutput string) analyzedMetadata {
 	eyeD3Data := extractEyeD3Metadata(eyeD3Output)
 	songrecData := extractSongrecMetadata(songrecOutput)
