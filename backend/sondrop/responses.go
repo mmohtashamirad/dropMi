@@ -37,10 +37,6 @@ type confirmRequest struct {
 	SelectedLyrics   *lyricsOption     `json:"selectedLyrics,omitempty"`
 }
 
-type lyricsSearchRequest struct {
-	SelectedMetadata map[string]string `json:"selectedMetadata,omitempty"`
-}
-
 type confirmResponse struct {
 	FileName string `json:"fileName,omitempty"`
 	Message  string `json:"message,omitempty"`

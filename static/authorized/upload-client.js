@@ -72,13 +72,66 @@ export async function confirmUpload(uploadId, selectedMetadata, selectedLyrics) 
 }
 
 export async function findLyrics(selectedMetadata) {
-  return submitUploadAction(
-    "/lyrics/search",
-    {
-      selectedMetadata
-    },
-    "The server could not search for lyrics."
-  );
+  const artist = (selectedMetadata.artist || "").trim();
+  const trackName = (selectedMetadata.track_name || "").trim();
+  const album = (selectedMetadata.album || "").trim();
+
+  if (!artist || !trackName) {
+    return {
+      ok: false,
+      error: "Fill in at least artist and track name before searching for lyrics."
+    };
+  }
+
+  const query = new URLSearchParams({
+    artist_name: artist,
+    track_name: trackName
+  });
+
+  if (album) {
+    query.set("album_name", album);
+  }
+
+  try {
+    const response = await fetch(`https://lrclib.net/api/search?${query.toString()}`, {
+      method: "GET",
+      headers: {
+        Accept: "application/json"
+      }
+    });
+
+    const payload = await response.json().catch(() => null);
+    if (!response.ok) {
+      return {
+        ok: false,
+        error: "LRCLIB could not search for lyrics right now."
+      };
+    }
+
+    const lyricsOptions = Array.isArray(payload)
+      ? payload
+          .filter((item) => item.syncedLyrics || item.plainLyrics)
+          .map((item) => ({
+            title: buildLyricsTitle(item),
+            artist: item.artistName || "",
+            album: item.albumName || "",
+            syncedLyrics: item.syncedLyrics || "",
+            plainLyrics: item.plainLyrics || ""
+          }))
+      : [];
+
+    return {
+      ok: true,
+      payload: {
+        lyricsOptions
+      }
+    };
+  } catch {
+    return {
+      ok: false,
+      error: "The browser could not reach LRCLIB."
+    };
+  }
 }
 
 export async function cancelUpload(uploadId) {
@@ -105,4 +158,10 @@ async function submitUploadAction(url, body, fallbackError) {
     ok: false,
     error: result.error
   };
+}
+
+function buildLyricsTitle(item) {
+  const trackName = (item.trackName || "").trim();
+  const artistName = (item.artistName || "").trim();
+  return [trackName, artistName].filter(Boolean).join(" - ") || "Untitled lyrics";
 }

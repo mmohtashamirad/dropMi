@@ -208,41 +208,6 @@ func (s *server) handleUpload(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (s *server) handleFindLyrics(w http.ResponseWriter, r *http.Request) {
-	username, ok := s.requireAuth(w, r)
-	if !ok {
-		return
-	}
-	_ = username
-
-	if r.Method != http.MethodPost {
-		w.Header().Set("Allow", http.MethodPost)
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	var req lyricsSearchRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSON(w, http.StatusBadRequest, analyzeResponse{
-			Error: "Unable to read lyrics search request.",
-		})
-		return
-	}
-
-	lyricsOptions, err := findLyricsOptionsFromSelectedMetadata(r.Context(), req.SelectedMetadata)
-	if err != nil {
-		Warnf("LRCLIB search failed from selected metadata: %v", err)
-		writeJSON(w, http.StatusInternalServerError, analyzeResponse{
-			Error: "Unable to search for lyrics right now.",
-		})
-		return
-	}
-
-	writeJSON(w, http.StatusOK, analyzeResponse{
-		LyricsOptions: lyricsOptions,
-	})
-}
-
 func (s *server) handleConfirm(w http.ResponseWriter, r *http.Request) {
 	username, ok := s.requireAuth(w, r)
 	if !ok {

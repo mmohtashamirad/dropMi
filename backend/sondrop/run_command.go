@@ -31,10 +31,6 @@ func runSongRec(parent context.Context, filePath string) (string, error) {
 	)
 }
 
-func applySelectedMetadata(parent context.Context, filePath string, selectedMetadata map[string]string, artworkPath string) (string, error) {
-	return applySelectedMetadataWithLyrics(parent, filePath, selectedMetadata, artworkPath, "")
-}
-
 func applySelectedMetadataWithLyrics(parent context.Context, filePath string, selectedMetadata map[string]string, artworkPath string, lyricsPath string) (string, error) {
 	var args []string
 

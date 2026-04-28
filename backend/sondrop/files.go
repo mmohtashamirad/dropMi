@@ -59,10 +59,6 @@ func tempUploadPath(rootDir string, username string, uploadID string) string {
 	return filepath.Join(tempUserDir(rootDir, username), uploadID)
 }
 
-func finalUploadPath(dir string, uploadID string) string {
-	return filepath.Join(dir, uploadID)
-}
-
 func metadataDrivenUploadPath(rootDir string, username string, selectedMetadata map[string]string, sourcePath string, fallbackName string) string {
 	userPart := sanitizePathPart(username)
 	if userPart == "" {

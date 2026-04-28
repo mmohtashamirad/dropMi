@@ -33,7 +33,6 @@ func (s *server) routes() http.Handler {
 	mux.HandleFunc("/session", s.handleSession)
 	mux.HandleFunc("/logout", s.handleLogout)
 	mux.HandleFunc("/upload", s.handleUpload)
-	mux.HandleFunc("/lyrics/search", s.handleFindLyrics)
 	mux.HandleFunc("/confirm", s.handleConfirm)
 	mux.HandleFunc("/cancel", s.handleCancel)
 	mux.HandleFunc("/", s.handleIndex)

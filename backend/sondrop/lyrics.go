@@ -26,16 +26,6 @@ type lrclibSearchResult struct {
 	PlainLyrics  string `json:"plainLyrics"`
 }
 
-func findLyricsOptions(parent context.Context, eyeD3Output string, songrecOutput string) ([]lyricsOption, error) {
-	metadata := deriveAnalyzedMetadata(eyeD3Output, songrecOutput)
-	if metadata.TrackName == "" || metadata.Artist == "" {
-		Debugf("skipping LRCLIB search because artist or track name is missing")
-		return nil, nil
-	}
-
-	return searchLRCLIB(parent, metadata)
-}
-
 func findLyricsOptionsFromSelectedMetadata(parent context.Context, selectedMetadata map[string]string) ([]lyricsOption, error) {
 	metadata := analyzedMetadata{
 		Artist:    firstNonEmpty(selectedMetadata["artist"]),
@@ -48,17 +38,6 @@ func findLyricsOptionsFromSelectedMetadata(parent context.Context, selectedMetad
 	}
 
 	return searchLRCLIB(parent, metadata)
-}
-
-func deriveAnalyzedMetadata(eyeD3Output string, songrecOutput string) analyzedMetadata {
-	eyeD3Data := extractEyeD3Metadata(eyeD3Output)
-	songrecData := extractSongrecMetadata(songrecOutput)
-
-	return analyzedMetadata{
-		Artist:    firstNonEmpty(songrecData.Artist, eyeD3Data.Artist),
-		TrackName: firstNonEmpty(songrecData.TrackName, eyeD3Data.TrackName),
-		Album:     firstNonEmpty(songrecData.Album, eyeD3Data.Album),
-	}
 }
 
 func searchLRCLIB(parent context.Context, metadata analyzedMetadata) ([]lyricsOption, error) {
