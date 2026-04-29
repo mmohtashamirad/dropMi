@@ -19,7 +19,7 @@ import {
   setDraggingState,
   showScreen
 } from "/authorized/screen-ui.js";
-import { cancelUpload, confirmUpload, findLyrics, uploadFile } from "/authorized/upload-client.js";
+import { cancelUpload, confirmUpload, findLyricsBySearchText, uploadFile } from "/authorized/upload-client.js";
 
 let currentUploadId = "";
 let dragDepth = 0;
@@ -152,12 +152,14 @@ function startUpload(file) {
       activeUpload = null;
       currentUploadId = payload.uploadId || "";
       showResult(payload, false);
+      fillLyricsSearchInput();
       maybeStartLyricsSearch();
     },
     onError(payload) {
       activeUpload = null;
       currentUploadId = payload.uploadId || "";
       showResult(payload, true);
+      fillLyricsSearchInput();
       maybeStartLyricsSearch();
     },
     onCancel() {
@@ -182,6 +184,7 @@ function finishResultAction() {
   elements.okButton.textContent = "OK";
   elements.cancelResultButton.textContent = "Cancel";
   elements.findLyricsButton.textContent = "Find lyrics";
+  elements.lyricsSearchInput.value = "";
 }
 
 function maybeStartLyricsSearch() {
@@ -196,18 +199,19 @@ function maybeStartLyricsSearch() {
 async function startLyricsSearch({ showMissingMetadataError }) {
   const requestId = lyricsSearchRequestId + 1;
   lyricsSearchRequestId = requestId;
+  const lyricsSearchText = elements.lyricsSearchInput.value.trim();
 
   elements.findLyricsButton.disabled = true;
   elements.findLyricsButton.textContent = "Finding lyrics...";
   clearTransientResultError();
 
-  const result = await findLyrics(getSelectedMetadata());
+  const result = await findLyricsBySearchText(lyricsSearchText);
   if (requestId !== lyricsSearchRequestId) {
     return;
   }
 
   if (!result.ok) {
-    if (showMissingMetadataError || result.error !== "Fill in at least artist and track name before searching for lyrics.") {
+    if (showMissingMetadataError || result.error !== "Enter a lyrics search before searching.") {
       renderConfirmError(result.error);
     }
     elements.findLyricsButton.disabled = false;
@@ -218,6 +222,13 @@ async function startLyricsSearch({ showMissingMetadataError }) {
   setLyricsOptions(result.payload?.lyricsOptions || []);
   elements.findLyricsButton.disabled = false;
   elements.findLyricsButton.textContent = "Find lyrics";
+}
+
+function fillLyricsSearchInput() {
+  const metadata = getSelectedMetadata();
+  elements.lyricsSearchInput.value = [metadata.artist, metadata.track_name]
+    .filter(Boolean)
+    .join(" ");
 }
 
 async function handleLogout() {

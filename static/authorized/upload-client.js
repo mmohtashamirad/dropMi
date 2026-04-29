@@ -92,6 +92,26 @@ export async function findLyrics(selectedMetadata) {
     query.set("album_name", album);
   }
 
+  return searchLyrics(query);
+}
+
+export async function findLyricsBySearchText(searchText) {
+  const queryText = searchText.trim();
+  if (!queryText) {
+    return {
+      ok: false,
+      error: "Enter a lyrics search before searching."
+    };
+  }
+
+  const query = new URLSearchParams({
+    q: queryText
+  });
+
+  return searchLyrics(query);
+}
+
+async function searchLyrics(query) {
   try {
     const response = await fetch(`https://lrclib.net/api/search?${query.toString()}`, {
       method: "GET",

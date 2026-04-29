@@ -8,6 +8,7 @@ export const elements = {
   dropZone: document.getElementById("drop-zone"),
   fileInput: document.getElementById("file-input"),
   findLyricsButton: document.getElementById("find-lyrics-button"),
+  lyricsSearchInput: document.getElementById("lyrics-search-input"),
   lyricsOptions: document.getElementById("lyrics-options"),
   lyricsSection: document.getElementById("lyrics-section"),
   logoutButton: document.getElementById("logout-button"),
