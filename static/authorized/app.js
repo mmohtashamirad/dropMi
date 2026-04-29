@@ -29,6 +29,7 @@ let pendingFiles = [];
 let queuedFiles = [];
 let queueTotal = 0;
 let queueCompleted = 0;
+let currentAudioURL = "";
 const themeStorageKey = "sondrop-theme";
 
 initializeTheme();
@@ -170,6 +171,7 @@ function processNextFile() {
   resetResultScreen();
   resetUploadScreen();
   elements.lyricsSearchInput.value = "";
+  setAudioPlayerFile(nextFile);
   startUpload(nextFile);
 }
 
@@ -199,6 +201,7 @@ function startUpload(file) {
       resetDropMessage();
       elements.fileInput.value = "";
       elements.lyricsSearchInput.value = "";
+      clearAudioPlayer();
       showScreen(elements.dropScreen);
     }
   });
@@ -227,6 +230,7 @@ function finishResultAction() {
 
 function finishQueue() {
   clearQueue();
+  clearAudioPlayer();
   resetDropMessage();
   elements.fileInput.value = "";
   showScreen(elements.dropScreen);
@@ -260,6 +264,24 @@ function buildQueueTooltip() {
   return queuedFiles
     .map((file, index) => `${index + 1}. ${file.name}`)
     .join("\n");
+}
+
+function setAudioPlayerFile(file) {
+  clearAudioPlayer();
+  currentAudioURL = URL.createObjectURL(file);
+  elements.audioPlayer.src = currentAudioURL;
+  elements.audioPlayer.load();
+}
+
+function clearAudioPlayer() {
+  elements.audioPlayer.pause();
+  elements.audioPlayer.removeAttribute("src");
+  elements.audioPlayer.load();
+
+  if (currentAudioURL) {
+    URL.revokeObjectURL(currentAudioURL);
+    currentAudioURL = "";
+  }
 }
 
 function maybeStartLyricsSearch() {
@@ -312,6 +334,7 @@ async function handleLogout() {
   }
 
   clearQueue();
+  clearAudioPlayer();
   await logout();
 
   activeUpload = null;

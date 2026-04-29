@@ -234,6 +234,12 @@ h1 {
   margin-top: 28px;
 }
 
+.audio-player {
+  display: block;
+  width: min(760px, 100%);
+  margin: 18px auto 0;
+}
+
 .lyrics-search-row {
   display: flex;
   align-items: center;

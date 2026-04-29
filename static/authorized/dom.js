@@ -1,4 +1,5 @@
 export const elements = {
+  audioPlayer: document.getElementById("audio-player"),
   browseButton: document.getElementById("browse-button"),
   cancelResultButton: document.getElementById("cancel-result-button"),
   cancelUploadButton: document.getElementById("cancel-upload-button"),
