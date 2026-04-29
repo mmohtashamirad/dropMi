@@ -225,9 +225,14 @@ h1 {
 
 .lyrics-search-row {
   display: flex;
-  width: min(520px, 100%);
-  margin: 14px auto 0;
+  align-items: center;
+  width: min(760px, 100%);
+  margin: 18px auto 0;
   gap: 12px;
+  border: 1px solid var(--panel-border);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 12px;
 }
 
 .lyrics-search-row .secondary-button {
@@ -456,5 +461,9 @@ h1 {
   .result-table th,
   .result-table td {
     padding: 14px 12px;
+  }
+
+  .lyrics-search-row {
+    flex-wrap: wrap;
   }
 }
