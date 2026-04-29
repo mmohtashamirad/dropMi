@@ -285,14 +285,29 @@ h1 {
 }
 
 .lyrics-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   cursor: pointer;
   list-style: none;
   padding: 14px 16px;
   font-weight: 700;
 }
 
+.lyrics-duration {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
 .lyrics-summary::-webkit-details-marker {
   display: none;
+}
+
+.lyrics-summary-title {
+  min-width: 0;
 }
 
 .lyrics-selector {

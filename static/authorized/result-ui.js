@@ -109,8 +109,17 @@ function renderLyricsOptions(options) {
     const summary = document.createElement("summary");
     summary.className = "lyrics-summary";
     const summaryTitle = document.createElement("span");
+    summaryTitle.className = "lyrics-summary-title";
     summaryTitle.textContent = option.title || "Lyrics option";
     summary.appendChild(summaryTitle);
+
+    const duration = formatDuration(option.duration);
+    if (duration) {
+      const summaryDuration = document.createElement("span");
+      summaryDuration.className = "lyrics-duration";
+      summaryDuration.textContent = duration;
+      summary.appendChild(summaryDuration);
+    }
     item.appendChild(summary);
 
     const selectorRow = document.createElement("label");
@@ -247,6 +256,17 @@ function createTextCell(text) {
   const cell = document.createElement("td");
   cell.textContent = text || "—";
   return cell;
+}
+
+function formatDuration(duration) {
+  const seconds = Math.round(Number(duration));
+  if (!Number.isFinite(seconds) || seconds <= 0) {
+    return "";
+  }
+
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+  return `${minutes}:${String(remainingSeconds).padStart(2, "0")}`;
 }
 
 function createValueCell(value) {

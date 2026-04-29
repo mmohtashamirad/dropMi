@@ -115,6 +115,7 @@ export async function findLyrics(selectedMetadata) {
             title: buildLyricsTitle(item),
             artist: item.artistName || "",
             album: item.albumName || "",
+            duration: item.duration || 0,
             syncedLyrics: item.syncedLyrics || "",
             plainLyrics: item.plainLyrics || ""
           }))
