@@ -87,7 +87,7 @@ function renderComparisonTable(eyeD3Output, songrecOutput) {
     row.appendChild(createTextCell(label));
     row.appendChild(createValueCell(eyeD3Value));
     row.appendChild(createValueCell(songrecValue));
-    row.appendChild(createEditableCell(label, songrecValue || eyeD3Value || ""));
+    row.appendChild(createEditableCell(label, songrecValue || ""));
     elements.resultTableBody.appendChild(row);
   });
 }
