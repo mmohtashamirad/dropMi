@@ -26,6 +26,7 @@ let dragDepth = 0;
 let activeUpload = null;
 let lyricsSearchRequestId = 0;
 let pendingFiles = [];
+let queuedFiles = [];
 let queueTotal = 0;
 let queueCompleted = 0;
 const themeStorageKey = "sondrop-theme";
@@ -151,7 +152,8 @@ function enqueueFiles(fileList) {
     return;
   }
 
-  pendingFiles = files;
+  queuedFiles = files;
+  pendingFiles = files.slice();
   queueTotal = files.length;
   queueCompleted = 0;
   currentUploadId = "";
@@ -232,6 +234,7 @@ function finishQueue() {
 
 function clearQueue() {
   pendingFiles = [];
+  queuedFiles = [];
   queueTotal = 0;
   queueCompleted = 0;
   setQueueStatus("");
@@ -244,10 +247,19 @@ function updateQueueStatus() {
 }
 
 function setQueueStatus(status) {
+  const tooltip = status ? buildQueueTooltip() : "";
   elements.uploadQueueStatus.textContent = status;
   elements.resultQueueStatus.textContent = status;
+  elements.uploadQueueStatus.title = tooltip;
+  elements.resultQueueStatus.title = tooltip;
   elements.uploadQueueStatus.hidden = !status;
   elements.resultQueueStatus.hidden = !status;
+}
+
+function buildQueueTooltip() {
+  return queuedFiles
+    .map((file, index) => `${index + 1}. ${file.name}`)
+    .join("\n");
 }
 
 function maybeStartLyricsSearch() {
