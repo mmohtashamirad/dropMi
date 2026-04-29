@@ -24,6 +24,7 @@ import { cancelUpload, confirmUpload, findLyrics, uploadFile } from "/authorized
 let currentUploadId = "";
 let dragDepth = 0;
 let activeUpload = null;
+let lyricsSearchRequestId = 0;
 const themeStorageKey = "sondrop-theme";
 
 initializeTheme();
@@ -82,22 +83,8 @@ elements.cancelUploadButton.addEventListener("click", () => {
   activeUpload.abort();
 });
 
-elements.findLyricsButton.addEventListener("click", async () => {
-  elements.findLyricsButton.disabled = true;
-  elements.findLyricsButton.textContent = "Finding lyrics...";
-  clearTransientResultError();
-
-  const result = await findLyrics(getSelectedMetadata());
-  if (!result.ok) {
-    renderConfirmError(result.error);
-    elements.findLyricsButton.disabled = false;
-    elements.findLyricsButton.textContent = "Find lyrics";
-    return;
-  }
-
-  setLyricsOptions(result.payload?.lyricsOptions || []);
-  elements.findLyricsButton.disabled = false;
-  elements.findLyricsButton.textContent = "Find lyrics";
+elements.findLyricsButton.addEventListener("click", () => {
+  startLyricsSearch({ showMissingMetadataError: true });
 });
 
 elements.okButton.addEventListener("click", async () => {
@@ -165,11 +152,13 @@ function startUpload(file) {
       activeUpload = null;
       currentUploadId = payload.uploadId || "";
       showResult(payload, false);
+      maybeStartLyricsSearch();
     },
     onError(payload) {
       activeUpload = null;
       currentUploadId = payload.uploadId || "";
       showResult(payload, true);
+      maybeStartLyricsSearch();
     },
     onCancel() {
       activeUpload = null;
@@ -184,6 +173,7 @@ function startUpload(file) {
 
 function finishResultAction() {
   currentUploadId = "";
+  lyricsSearchRequestId += 1;
   resetResultScreen();
   showScreen(elements.dropScreen);
   elements.okButton.disabled = false;
@@ -191,6 +181,42 @@ function finishResultAction() {
   elements.findLyricsButton.disabled = false;
   elements.okButton.textContent = "OK";
   elements.cancelResultButton.textContent = "Cancel";
+  elements.findLyricsButton.textContent = "Find lyrics";
+}
+
+function maybeStartLyricsSearch() {
+  const metadata = getSelectedMetadata();
+  if (!metadata.artist || !metadata.track_name) {
+    return;
+  }
+
+  startLyricsSearch({ showMissingMetadataError: false });
+}
+
+async function startLyricsSearch({ showMissingMetadataError }) {
+  const requestId = lyricsSearchRequestId + 1;
+  lyricsSearchRequestId = requestId;
+
+  elements.findLyricsButton.disabled = true;
+  elements.findLyricsButton.textContent = "Finding lyrics...";
+  clearTransientResultError();
+
+  const result = await findLyrics(getSelectedMetadata());
+  if (requestId !== lyricsSearchRequestId) {
+    return;
+  }
+
+  if (!result.ok) {
+    if (showMissingMetadataError || result.error !== "Fill in at least artist and track name before searching for lyrics.") {
+      renderConfirmError(result.error);
+    }
+    elements.findLyricsButton.disabled = false;
+    elements.findLyricsButton.textContent = "Find lyrics";
+    return;
+  }
+
+  setLyricsOptions(result.payload?.lyricsOptions || []);
+  elements.findLyricsButton.disabled = false;
   elements.findLyricsButton.textContent = "Find lyrics";
 }
 
