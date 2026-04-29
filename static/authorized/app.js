@@ -25,6 +25,9 @@ let currentUploadId = "";
 let dragDepth = 0;
 let activeUpload = null;
 let lyricsSearchRequestId = 0;
+let pendingFiles = [];
+let queueTotal = 0;
+let queueCompleted = 0;
 const themeStorageKey = "sondrop-theme";
 
 initializeTheme();
@@ -57,11 +60,9 @@ elements.dropZone.addEventListener("drop", (event) => {
   event.preventDefault();
   dragDepth = 0;
   setDraggingState(false);
-  const [file] = event.dataTransfer.files;
+  const files = event.dataTransfer.files;
   resetDropMessage();
-  if (file) {
-    startUpload(file);
-  }
+  enqueueFiles(files);
 });
 
 elements.browseButton.addEventListener("click", () => {
@@ -69,10 +70,7 @@ elements.browseButton.addEventListener("click", () => {
 });
 
 elements.fileInput.addEventListener("change", () => {
-  const [file] = elements.fileInput.files;
-  if (file) {
-    startUpload(file);
-  }
+  enqueueFiles(elements.fileInput.files);
 });
 
 elements.cancelUploadButton.addEventListener("click", () => {
@@ -80,6 +78,7 @@ elements.cancelUploadButton.addEventListener("click", () => {
     return;
   }
 
+  clearQueue();
   activeUpload.abort();
 });
 
@@ -146,11 +145,39 @@ document.addEventListener("keydown", (event) => {
   elements.cancelResultButton.click();
 });
 
+function enqueueFiles(fileList) {
+  const files = Array.from(fileList || []).filter(Boolean);
+  if (files.length === 0) {
+    return;
+  }
+
+  pendingFiles = files;
+  queueTotal = files.length;
+  queueCompleted = 0;
+  currentUploadId = "";
+  processNextFile();
+}
+
+function processNextFile() {
+  const nextFile = pendingFiles.shift();
+  if (!nextFile) {
+    finishQueue();
+    return;
+  }
+
+  resetResultScreen();
+  resetUploadScreen();
+  elements.lyricsSearchInput.value = "";
+  startUpload(nextFile);
+}
+
 function startUpload(file) {
+  updateQueueStatus();
   activeUpload = uploadFile(file, {
     onSuccess(payload) {
       activeUpload = null;
       currentUploadId = payload.uploadId || "";
+      updateQueueStatus();
       showResult(payload, false);
       fillLyricsSearchInput();
       maybeStartLyricsSearch();
@@ -158,6 +185,7 @@ function startUpload(file) {
     onError(payload) {
       activeUpload = null;
       currentUploadId = payload.uploadId || "";
+      updateQueueStatus();
       showResult(payload, true);
       fillLyricsSearchInput();
       maybeStartLyricsSearch();
@@ -168,6 +196,7 @@ function startUpload(file) {
       resetUploadScreen();
       resetDropMessage();
       elements.fileInput.value = "";
+      elements.lyricsSearchInput.value = "";
       showScreen(elements.dropScreen);
     }
   });
@@ -177,7 +206,6 @@ function finishResultAction() {
   currentUploadId = "";
   lyricsSearchRequestId += 1;
   resetResultScreen();
-  showScreen(elements.dropScreen);
   elements.okButton.disabled = false;
   elements.cancelResultButton.disabled = false;
   elements.findLyricsButton.disabled = false;
@@ -185,6 +213,41 @@ function finishResultAction() {
   elements.cancelResultButton.textContent = "Cancel";
   elements.findLyricsButton.textContent = "Find lyrics";
   elements.lyricsSearchInput.value = "";
+  queueCompleted += 1;
+
+  if (pendingFiles.length > 0) {
+    processNextFile();
+    return;
+  }
+
+  finishQueue();
+}
+
+function finishQueue() {
+  clearQueue();
+  resetDropMessage();
+  elements.fileInput.value = "";
+  showScreen(elements.dropScreen);
+}
+
+function clearQueue() {
+  pendingFiles = [];
+  queueTotal = 0;
+  queueCompleted = 0;
+  setQueueStatus("");
+}
+
+function updateQueueStatus() {
+  const currentPosition = queueCompleted + 1;
+  const status = queueTotal > 1 ? `File ${currentPosition} of ${queueTotal}` : "";
+  setQueueStatus(status);
+}
+
+function setQueueStatus(status) {
+  elements.uploadQueueStatus.textContent = status;
+  elements.resultQueueStatus.textContent = status;
+  elements.uploadQueueStatus.hidden = !status;
+  elements.resultQueueStatus.hidden = !status;
 }
 
 function maybeStartLyricsSearch() {
@@ -236,6 +299,7 @@ async function handleLogout() {
     activeUpload.abort();
   }
 
+  clearQueue();
   await logout();
 
   activeUpload = null;

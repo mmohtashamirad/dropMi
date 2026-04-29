@@ -4,7 +4,7 @@ export function setDraggingState(isDragging) {
   elements.dropZone.classList.toggle("is-dragging", isDragging);
   if (isDragging) {
     elements.dropTitle.textContent = "Release to upload";
-    elements.dropSubtext.textContent = "The server will accept the file and run eyeD3.";
+    elements.dropSubtext.textContent = "The server will accept each file and run eyeD3.";
   }
 }
 
@@ -20,8 +20,8 @@ export function setProgress(value) {
 }
 
 export function resetDropMessage() {
-  elements.dropTitle.textContent = "Drop your MP3 file here";
-  elements.dropSubtext.textContent = "Drag and drop an MP3 file to begin.";
+  elements.dropTitle.textContent = "Drop your MP3 files here";
+  elements.dropSubtext.textContent = "Drag and drop one or more MP3 files to begin.";
 }
 
 export function resetUploadScreen() {

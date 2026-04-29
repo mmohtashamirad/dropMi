@@ -23,5 +23,7 @@ export const elements = {
   sessionUser: document.getElementById("session-user"),
   themeToggleButton: document.getElementById("theme-toggle-button"),
   uploadFileName: document.getElementById("upload-file-name"),
+  uploadQueueStatus: document.getElementById("upload-queue-status"),
+  resultQueueStatus: document.getElementById("result-queue-status"),
   uploadScreen: document.getElementById("upload-screen")
 };

@@ -180,6 +180,17 @@ h1 {
   color: var(--muted);
 }
 
+.queue-status {
+  margin: 0 0 10px;
+  color: var(--muted);
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.queue-status[hidden] {
+  display: none;
+}
+
 .primary-button,
 .secondary-button {
   margin-top: 28px;
