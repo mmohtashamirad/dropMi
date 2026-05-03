@@ -12,7 +12,9 @@ export function renderConfirmError(message) {
   clearResultError();
   const fragment = elements.resultErrorTemplate.content.cloneNode(true);
   fragment.querySelector("#result-error-text").textContent = message;
-  elements.resultScreen.insertBefore(fragment, elements.resultTableBody.parentElement);
+  fragment.querySelector(".result-error-close").addEventListener("click", clearResultError);
+  const tableWrap = elements.resultTableBody.closest(".result-table-wrap");
+  elements.resultScreen.insertBefore(fragment, tableWrap || elements.resultScreen.firstChild);
 }
 
 export function showResult(payload, isError) {

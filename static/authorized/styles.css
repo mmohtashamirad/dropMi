@@ -449,12 +449,29 @@ h1 {
 }
 
 .result-error {
+  position: relative;
   margin-top: 18px;
-  padding: 14px 16px;
+  padding: 14px 54px 14px 16px;
   border-radius: 16px;
   background: rgba(157, 68, 57, 0.1);
   color: var(--danger);
   text-align: left;
+}
+
+.result-error-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--secondary-bg);
+  color: var(--secondary-text);
+  font: inherit;
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
 }
 
 .result-error p {
