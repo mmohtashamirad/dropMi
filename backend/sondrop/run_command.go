@@ -53,6 +53,7 @@ func applySelectedMetadataWithLyrics(parent context.Context, filePath string, se
 		args = append(args, "--add-lyrics", "/songs/"+filepath.Base(lyricsPath))
 	}
 
+	args = append(args, "--encoding", "utf16")
 	args = append(args, "--preserve-file-times")
 
 	return runMusicToolsCommand(

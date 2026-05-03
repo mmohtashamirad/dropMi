@@ -109,4 +109,7 @@ Then run the command below to get the shazam result:
 or for eyeD3:
 `docker run --rm -v "$(pwd)/build/upload:/songs" music-tools   eyeD3 /songs/sondrop-214817309.mp3`
 
+If your metadata contains non-Latin characters, use `--encoding utf16` to ensure the tags are written correctly:
+`docker run --rm -v "$(pwd)/build/upload:/songs" music-tools   eyeD3 --encoding utf16 /songs/sondrop-214817309.mp3`
+
 The backend now uses this Docker image automatically when it analyzes uploads with eyeD3.
