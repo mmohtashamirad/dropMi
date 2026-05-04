@@ -7,6 +7,7 @@ export const elements = {
   dropSubtext: document.getElementById("drop-subtext"),
   dropTitle: document.getElementById("drop-title"),
   dropZone: document.getElementById("drop-zone"),
+  duplicateNotice: document.getElementById("duplicate-notice"),
   fileInput: document.getElementById("file-input"),
   findLyricsButton: document.getElementById("find-lyrics-button"),
   lyricsSearchInput: document.getElementById("lyrics-search-input"),

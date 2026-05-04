@@ -310,6 +310,30 @@ h1 {
   overflow-x: auto;
 }
 
+.duplicate-notice {
+  width: min(760px, 100%);
+  margin-top: 18px;
+  padding: 14px 16px;
+  border: 1px solid rgba(224, 154, 98, 0.35);
+  border-radius: 16px;
+  background: rgba(224, 154, 98, 0.1);
+  color: var(--text);
+  text-align: left;
+}
+
+.duplicate-notice[hidden] {
+  display: none;
+}
+
+.duplicate-notice strong {
+  color: var(--accent);
+}
+
+.duplicate-notice p {
+  margin: 8px 0 0;
+  color: var(--muted);
+}
+
 .lyrics-section {
   width: 100%;
   margin-top: 24px;

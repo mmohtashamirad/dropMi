@@ -21,6 +21,7 @@ export function showResult(payload, isError) {
   setProgress(100);
   showScreen(elements.resultScreen);
   elements.resultFileName.textContent = payload.fileName ? `File: ${payload.fileName}` : "";
+  renderDuplicateNotice(payload.duplicate);
   renderComparisonTable(payload.eyeD3Output, payload.songrecOutput);
   renderLyricsOptions(payload.lyricsOptions || []);
   clearResultError();
@@ -36,6 +37,7 @@ export function showResult(payload, isError) {
 
 export function resetResultScreen() {
   elements.resultFileName.textContent = "";
+  renderDuplicateNotice(null);
   elements.resultTableBody.innerHTML = "";
   elements.lyricsOptions.innerHTML = "";
   elements.lyricsSection.hidden = true;
@@ -92,6 +94,31 @@ function renderComparisonTable(eyeD3Output, songrecOutput) {
     row.appendChild(createEditableCell(label, songrecValue || ""));
     elements.resultTableBody.appendChild(row);
   });
+}
+
+function renderDuplicateNotice(duplicate) {
+  elements.duplicateNotice.innerHTML = "";
+
+  if (!duplicate) {
+    elements.duplicateNotice.hidden = true;
+    return;
+  }
+
+  const title = document.createElement("strong");
+  title.textContent = "Possible duplicate found";
+  elements.duplicateNotice.appendChild(title);
+
+  const details = document.createElement("p");
+  const score = formatSimilarity(duplicate.similarity);
+  const fileName = duplicate.fileName || "an existing song";
+  const duration = formatDuration(duplicate.duration);
+  details.textContent = [
+    `${fileName} matched with score ${score}`,
+    duration ? `duration ${duration}` : ""
+  ].filter(Boolean).join(" · ");
+  elements.duplicateNotice.appendChild(details);
+
+  elements.duplicateNotice.hidden = false;
 }
 
 function renderLyricsOptions(options) {
@@ -269,6 +296,15 @@ function formatDuration(duration) {
   const minutes = Math.floor(seconds / 60);
   const remainingSeconds = seconds % 60;
   return `${minutes}:${String(remainingSeconds).padStart(2, "0")}`;
+}
+
+function formatSimilarity(value) {
+  const score = Number(value);
+  if (!Number.isFinite(score)) {
+    return "0%";
+  }
+
+  return `${Math.round(score * 100)}%`;
 }
 
 function createValueCell(value) {

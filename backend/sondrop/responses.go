@@ -9,10 +9,18 @@ import (
 type analyzeResponse struct {
 	UploadID      string         `json:"uploadId,omitempty"`
 	FileName      string         `json:"fileName"`
+	Duplicate     *duplicateSong `json:"duplicate,omitempty"`
 	EyeD3Output   string         `json:"eyeD3Output,omitempty"`
 	SongrecOutput string         `json:"songrecOutput,omitempty"`
 	LyricsOptions []lyricsOption `json:"lyricsOptions,omitempty"`
 	Error         string         `json:"error,omitempty"`
+}
+
+type duplicateSong struct {
+	FileName     string  `json:"fileName"`
+	RelativePath string  `json:"relativePath,omitempty"`
+	Similarity   float64 `json:"similarity"`
+	Duration     float64 `json:"duration,omitempty"`
 }
 
 type loginRequest struct {
