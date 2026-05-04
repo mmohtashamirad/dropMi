@@ -23,6 +23,11 @@ func main() {
 		return
 	}
 
+	if err := cleanUploadTmpFiles(cfg.uploadTmpDir); err != nil {
+		log.Fatal(err)
+	}
+	startUploadTmpCleaner(cfg.uploadTmpDir)
+
 	app := newServer(cfg, authDB)
 
 	Infof("listening on http://localhost%s", cfg.addr)
