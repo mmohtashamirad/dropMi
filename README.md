@@ -109,6 +109,16 @@ Then run the command below to get the shazam result:
 or for eyeD3:
 `docker run --rm -v "$(pwd)/build/upload:/songs" music-tools   eyeD3 /songs/sondrop-214817309.mp3`
 
+or to generate an acoustic fingerprint with Chromaprint/fpcalc:
+`docker run --rm -v "$(pwd)/build/upload:/songs" music-tools fpcalc /songs/sondrop-214817309.mp3`
+
+For easier parsing, ask fpcalc for JSON:
+`docker run --rm -v "$(pwd)/build/upload:/songs" music-tools fpcalc -json /songs/sondrop-214817309.mp3`
+
+The important output fields are:
+- `DURATION`: the detected audio duration in seconds
+- `FINGERPRINT`: the acoustic fingerprint we can store and compare later
+
 If your metadata contains non-Latin characters, use `--encoding utf16` to ensure the tags are written correctly:
 `docker run --rm -v "$(pwd)/build/upload:/songs" music-tools   eyeD3 --encoding utf16 /songs/sondrop-214817309.mp3`
 

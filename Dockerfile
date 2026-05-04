@@ -7,6 +7,7 @@ RUN apt update && apt install -y \
     wget \
     ca-certificates \
     ffmpeg \
+    libchromaprint-tools \
     python3 \
     python3-pip \
     && rm -rf /var/lib/apt/lists/*
