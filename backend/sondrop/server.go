@@ -9,14 +9,16 @@ type server struct {
 	uploadTmpDir string
 	uploadDir    string
 	authDB       *sql.DB
+	songs        *songStore
 	sessions     *sessionStore
 }
 
-func newServer(cfg config, authDB *sql.DB) *server {
+func newServer(cfg config, authDB *sql.DB, songs *songStore) *server {
 	return &server{
 		uploadTmpDir: cfg.uploadTmpDir,
 		uploadDir:    cfg.uploadDir,
 		authDB:       authDB,
+		songs:        songs,
 		sessions:     newSessionStore(authDB),
 	}
 }

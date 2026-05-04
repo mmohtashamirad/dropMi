@@ -322,6 +322,10 @@ func (s *server) handleConfirm(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err := s.songs.upsertFromFile(r.Context(), destinationPath); err != nil {
+		Warnf("index confirmed upload %s: %v", destinationPath, err)
+	}
+
 	Infof("moved upload %q to %s", uploadID, destinationPath)
 	writeJSON(w, http.StatusOK, confirmResponse{
 		FileName: filepath.Base(destinationPath),

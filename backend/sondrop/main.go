@@ -1,6 +1,9 @@
 package main
 
-import "log"
+import (
+	"context"
+	"log"
+)
 
 func main() {
 	command, cfg := parseConfig()
@@ -28,7 +31,15 @@ func main() {
 	}
 	startUploadTmpCleaner(cfg.uploadTmpDir)
 
-	app := newServer(cfg, authDB)
+	songs, err := newSongStore(authDB, cfg.uploadDir)
+	if err != nil {
+		log.Fatal(err)
+	}
+	if err := songs.refresh(context.Background()); err != nil {
+		log.Fatal(err)
+	}
+
+	app := newServer(cfg, authDB, songs)
 
 	Infof("listening on http://localhost%s", cfg.addr)
 	Infof("upload temp dir: %s", cfg.uploadTmpDir)

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os/exec"
 	"path/filepath"
@@ -29,6 +30,39 @@ func runSongRec(parent context.Context, filePath string) (string, error) {
 		"songrec",
 		"audio-file-to-recognized-song",
 	)
+}
+
+type audioFingerprint struct {
+	Duration    float64
+	Fingerprint string
+}
+
+func runFPCalc(parent context.Context, filePath string) (audioFingerprint, string, error) {
+	output, err := runMusicToolsCommand(
+		parent,
+		filePath,
+		"fpcalc",
+		"-json",
+	)
+	if err != nil {
+		return audioFingerprint{}, output, err
+	}
+
+	var parsed struct {
+		Duration    float64 `json:"duration"`
+		Fingerprint string  `json:"fingerprint"`
+	}
+	if err := json.Unmarshal([]byte(output), &parsed); err != nil {
+		return audioFingerprint{}, output, fmt.Errorf("parse fpcalc output: %w", err)
+	}
+	if parsed.Fingerprint == "" {
+		return audioFingerprint{}, output, fmt.Errorf("fpcalc returned an empty fingerprint")
+	}
+
+	return audioFingerprint{
+		Duration:    parsed.Duration,
+		Fingerprint: parsed.Fingerprint,
+	}, output, nil
 }
 
 func applySelectedMetadataWithLyrics(parent context.Context, filePath string, selectedMetadata map[string]string, artworkPath string, lyricsPath string) (string, error) {
