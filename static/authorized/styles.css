@@ -334,6 +334,16 @@ h1 {
   color: var(--muted);
 }
 
+.duplicate-player-label {
+  font-weight: 700;
+}
+
+.duplicate-player {
+  display: block;
+  width: 100%;
+  margin-top: 10px;
+}
+
 .lyrics-section {
   width: 100%;
   margin-top: 24px;

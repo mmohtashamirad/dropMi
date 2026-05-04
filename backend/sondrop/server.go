@@ -37,6 +37,7 @@ func (s *server) routes() http.Handler {
 	mux.HandleFunc("/upload", s.handleUpload)
 	mux.HandleFunc("/confirm", s.handleConfirm)
 	mux.HandleFunc("/cancel", s.handleCancel)
+	mux.HandleFunc("/song", s.handleSong)
 	mux.HandleFunc("/", s.handleIndex)
 
 	return mux

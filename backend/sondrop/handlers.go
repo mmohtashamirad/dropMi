@@ -236,8 +236,17 @@ func (s *server) findDuplicateUpload(ctx context.Context, path string) (*duplica
 		return nil, nil
 	}
 
-	relativePath, err := filepath.Rel(s.uploadDir, record.Path)
-	if err != nil || strings.HasPrefix(relativePath, "..") {
+	absoluteUploadDir, err := filepath.Abs(s.uploadDir)
+	if err != nil {
+		return nil, err
+	}
+	absoluteRecordPath, err := filepath.Abs(record.Path)
+	if err != nil {
+		return nil, err
+	}
+
+	relativePath, err := filepath.Rel(absoluteUploadDir, absoluteRecordPath)
+	if err != nil || relativePath == "." || relativePath == ".." || strings.HasPrefix(relativePath, ".."+string(filepath.Separator)) {
 		relativePath = ""
 	}
 
@@ -421,6 +430,55 @@ func (s *server) handleCancel(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, confirmResponse{
 		Message: "Uploaded file deleted.",
 	})
+}
+
+func (s *server) handleSong(w http.ResponseWriter, r *http.Request) {
+	if _, ok := s.requireAuth(w, r); !ok {
+		return
+	}
+
+	if r.Method != http.MethodGet {
+		w.Header().Set("Allow", http.MethodGet)
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	songPath, err := safeUploadSongPath(s.uploadDir, r.URL.Query().Get("path"))
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	http.ServeFile(w, r, songPath)
+}
+
+func safeUploadSongPath(uploadDir string, relativePath string) (string, error) {
+	relativePath = strings.TrimSpace(relativePath)
+	if relativePath == "" || filepath.IsAbs(relativePath) {
+		return "", errors.New("invalid song path")
+	}
+
+	cleanPath := filepath.Clean(filepath.FromSlash(relativePath))
+	if cleanPath == "." || cleanPath == ".." || strings.HasPrefix(cleanPath, ".."+string(filepath.Separator)) {
+		return "", errors.New("invalid song path")
+	}
+
+	absoluteUploadDir, err := filepath.Abs(uploadDir)
+	if err != nil {
+		return "", err
+	}
+
+	absoluteSongPath, err := filepath.Abs(filepath.Join(absoluteUploadDir, cleanPath))
+	if err != nil {
+		return "", err
+	}
+
+	relativeToUploadDir, err := filepath.Rel(absoluteUploadDir, absoluteSongPath)
+	if err != nil || relativeToUploadDir == ".." || strings.HasPrefix(relativeToUploadDir, ".."+string(filepath.Separator)) {
+		return "", errors.New("invalid song path")
+	}
+
+	return absoluteSongPath, nil
 }
 
 func (s *server) requireAuth(w http.ResponseWriter, r *http.Request) (string, bool) {

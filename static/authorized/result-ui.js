@@ -118,6 +118,20 @@ function renderDuplicateNotice(duplicate) {
   ].filter(Boolean).join(" · ");
   elements.duplicateNotice.appendChild(details);
 
+  if (duplicate.relativePath) {
+    const playerLabel = document.createElement("p");
+    playerLabel.className = "duplicate-player-label";
+    playerLabel.textContent = "Existing song";
+    elements.duplicateNotice.appendChild(playerLabel);
+
+    const player = document.createElement("audio");
+    player.className = "duplicate-player";
+    player.controls = true;
+    player.preload = "metadata";
+    player.src = `/song?${new URLSearchParams({ path: duplicate.relativePath }).toString()}`;
+    elements.duplicateNotice.appendChild(player);
+  }
+
   elements.duplicateNotice.hidden = false;
 }
 
