@@ -123,3 +123,62 @@ If your metadata contains non-Latin characters, use `--encoding utf16` to ensure
 `docker run --rm -v "$(pwd)/build/upload:/songs" music-tools   eyeD3 --encoding utf16 /songs/sondrop-214817309.mp3`
 
 The backend now uses this Docker image automatically when it analyzes uploads with eyeD3.
+
+## Docker Compose Deployment
+
+For a Linux server deployment, use `Dockerfile.app` and `docker-compose.yml`.
+The app container needs access to the host Docker socket because the backend runs
+the `music-tools` image for `eyeD3` and `songrec`.
+
+Recommended server layout:
+
+```text
+sondrop/
+  sondrop_repo/
+  data/
+    tmp_upload/
+    upload/
+    config/
+      auth.db
+```
+
+
+Create persistent data folders:
+
+```bash
+mkdir -p \
+  "$SONDROP_INSTALLATION_PATH/data/tmp_upload" \
+  "$SONDROP_INSTALLATION_PATH/data/upload" \
+  "$SONDROP_INSTALLATION_PATH/data/config"
+```
+
+Build both images:
+
+```bash
+docker-compose build
+```
+
+Create-the first user:
+
+```bash
+docker-compose run --rm sondrop create-user \
+  -auth-db "$SONDROP_INSTALLATION_PATH/data/config/auth.db" \
+  -username admin \
+  -password 'change-this'
+```
+
+Start the app:
+
+```bash
+docker-compose -p sondrop -f /mnt/craid1/docker-containers/sondrop/docker/docker-compose.yml up -d
+```
+
+The `sondrop` container joins the external `cloudflare` network and listens on
+port `8080` inside that network. Point your Cloudflare tunnel or reverse proxy
+at `http://sondrop:8080`.
+
+And to update the server to the latest changes:
+
+```bash
+docker-compose build
+```

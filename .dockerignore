@@ -1,0 +1,8 @@
+.git
+.vscode
+build
+data
+upload
+upload_tmp
+auth.db
+*.db
