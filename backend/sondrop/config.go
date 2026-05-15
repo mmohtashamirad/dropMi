@@ -4,14 +4,17 @@ import (
 	"flag"
 	"log"
 	"os"
+	"path/filepath"
 )
 
 type config struct {
-	uploadTmpDir string
-	uploadDir    string
-	addr         string
-	authDBPath   string
-	logLevel     string
+	uploadTmpDir     string
+	uploadDir        string
+	addr             string
+	authDBPath       string
+	logLevel         string
+	rootPath         string
+	dockerMountPoint string
 }
 
 type commandConfig struct {
@@ -33,11 +36,23 @@ func parseConfig() (*commandConfig, config) {
 	flag.StringVar(&cfg.addr, "addr", ":8080", "HTTP listen address")
 	flag.StringVar(&cfg.authDBPath, "auth-db", "./auth.db", "SQLite auth database path")
 	flag.StringVar(&cfg.logLevel, "log-level", "info", "backend log level: debug, info, warning, or error")
+	flag.StringVar(&cfg.rootPath, "p", "", "shared root path for SonDrop data")
+	flag.StringVar(&cfg.rootPath, "root-path", "", "shared root path for SonDrop data")
+	flag.StringVar(&cfg.dockerMountPoint, "m", "", "path where root_path is mounted inside Docker containers")
+	flag.StringVar(&cfg.dockerMountPoint, "docker-mount-point", "", "path where root_path is mounted inside Docker containers")
 	flag.Parse()
 
 	if cfg.uploadTmpDir == "" || cfg.uploadDir == "" {
 		log.Fatal("both -upload-tmp-dir/-t and -upload-dir/-u must be supplied")
 	}
+	if cfg.dockerMountPoint == "" {
+		log.Fatal("-docker-mount-point must be supplied")
+	}
+
+	cfg.rootPath = cleanPath(cfg.rootPath)
+	cfg.dockerMountPoint = cleanPath(cfg.dockerMountPoint)
+	cfg.uploadTmpDir = resolveDataPath(cfg.rootPath, cfg.uploadTmpDir)
+	cfg.uploadDir = resolveDataPath(cfg.rootPath, cfg.uploadDir)
 
 	ensureDir(cfg.uploadTmpDir, "upload tmp dir")
 	ensureDir(cfg.uploadDir, "upload dir")
@@ -67,4 +82,19 @@ func ensureDir(path string, label string) {
 	if err := os.MkdirAll(path, 0o755); err != nil {
 		log.Fatalf("create %s: %v", label, err)
 	}
+}
+
+func resolveDataPath(rootPath string, path string) string {
+	path = cleanPath(path)
+	if rootPath == "" || filepath.IsAbs(path) {
+		return path
+	}
+	return filepath.Join(rootPath, path)
+}
+
+func cleanPath(path string) string {
+	if path == "" {
+		return ""
+	}
+	return filepath.Clean(path)
 }

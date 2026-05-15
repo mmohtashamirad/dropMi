@@ -5,23 +5,30 @@ services:
       dockerfile: Dockerfile.app
     image: sondrop-app
     container_name: sondrop
+    user: "1000:1000"
+    group_add:
+      - "105"
     restart: no
     expose:
       - "8080"
     command:
       - "-addr"
       - ":8080"
+      - "-root-path"
+      - "/data"
+      - "-docker-mount-point"
+      - "/data"
       - "-upload-tmp-dir"
-      - "/mnt/craid1/docker-containers/sondrop/data/tmp_upload"
+      - "tmp_upload"
       - "-upload-dir"
-      - "/mnt/craid1/docker-containers/sondrop/data/upload"
+      - "upload"
       - "-auth-db"
-      - "/mnt/craid1/docker-containers/sondrop/data/config/auth.db"
+      - "config/auth.db"
       - "-log-level"
       - "debug"
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock"
-      - "/mnt/craid1/docker-containers/sondrop/data:/mnt/craid1/docker-containers/sondrop/data"
+      - "/mnt/craid1/docker-containers/sondrop/data:/data"
     depends_on:
       - music-tools
     networks:
@@ -32,7 +39,11 @@ services:
       context: .
       dockerfile: Dockerfile
     image: music-tools
-    command: ["true"]
+    container_name: music-tools
+    user: "1000:1000"
+    command: ["sleep", "infinity"]
+    volumes:
+      - "/mnt/craid1/docker-containers/sondrop/data:/data"
 
 networks:
   cloudflare:

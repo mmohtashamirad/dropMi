@@ -1,59 +1,27 @@
 # SonDrop
 
-SonDrop is a small Go web application for dropping an audio file into the browser, uploading it to the server, and eventually inspecting it with `eyeD3`.
+SonDrop is a small Go web application for dropping an audio file into the browser, uploading it to the server, and analyzing it using eyeD3, shazam, ... and then fixing the tags and lyric, ...
+
+'music-tools' is a docker container that you need to start both for dev or docker run. Instructions later in this doc.
 
 ## Prerequisites
 
 - Go 1.22 or newer
 - Docker
-- A local `music-tools` image with `eyeD3` installed
+
 
 ## Run Locally
 
 From the project root:
 
 ```bash
-mkdir -p upload_tmp upload
-go run ./backend/sondrop -t ./upload_tmp -u ./upload
+mkdir -p tmp/data/tmp_upload tmp/data/upload tmp/data/config
+make && ./build/sondrop -p $(pwd)/tmp/data/ -m /data -t tmp_upload/ -u upload/ -auth-db config/auth.db  -log-level debug
 ```
 
-The server starts on `http://localhost:8080`.
+The server starts on `http://serverIP:8080`.
 
-## Build
 
-To build a local binary into the `build/` folder:
-
-```bash
-mkdir -p build
-go build -o build/sondrop ./backend/sondrop
-```
-
-Then run it with:
-
-```bash
-mkdir -p upload_tmp upload
-./build/sondrop -t ./upload_tmp -u ./upload
-```
-
-## Make Targets
-
-If you want a shorter build command, use:
-
-```bash
-make build
-```
-
-This also writes the binary to `build/sondrop`.
-
-Short flags:
-- `-t`: temporary upload directory
-- `-u`: final upload directory
-
-Logging:
-- `-log-level debug`
-- `-log-level info`
-- `-log-level warning`
-- `-log-level error`
 
 ## Minimal Auth Step
 
@@ -63,13 +31,13 @@ Passwords are stored as plain text for now so we can take auth in small steps.
 Create a user:
 
 ```bash
-go run ./backend/sondrop create-user -username admin -password secret
+./build/sondrop create-user -username admin -password secret
 ```
 
 The auth database defaults to `./auth.db`, or you can override it:
 
 ```bash
-go run ./backend/sondrop create-user -auth-db ./my-auth.db -username admin -password secret
+./build/sondrop create-user -auth-db ./my-auth.db -username admin -password secret
 ```
 
 After creating a user, the site now starts on a login screen.
@@ -94,41 +62,42 @@ Only a correct username and password can access the upload UI.
 - `static/upload-client.js`: upload and upload-action requests
 - `static/api.js`: shared frontend request helpers
 
-## Current Status
-
-The current version uploads the file into a temporary upload directory, runs `eyeD3`, shows the output in the browser, and moves the file into the final upload directory when the `OK` button is pressed.
 
 ## Docker
 a dockerfile is added to create an image that you can run songrec and eyeD3 easily.
 do this once on your computer from where you have the dockerfile:
 `docker build -t music-tools .`
 
+and to run the music-tools container manually:
+`docker run -d --name music-tools -v "$(pwd)/tmp/data:/data" music-tools sleep infinity`
+
 Then run the command below to get the shazam result:
-`docker run --rm -v "$(pwd)/build/upload:/songs" music-tools   songrec audio-file-to-recognized-song /songs/sondrop-214817309.mp3`
+`docker exec music-tools songrec audio-file-to-recognized-song /data/sondrop-214817309.mp3`
 
 or for eyeD3:
-`docker run --rm -v "$(pwd)/build/upload:/songs" music-tools   eyeD3 /songs/sondrop-214817309.mp3`
+`docker exec music-tools eyeD3 /data/sondrop-214817309.mp3`
 
 or to generate an acoustic fingerprint with Chromaprint/fpcalc:
-`docker run --rm -v "$(pwd)/build/upload:/songs" music-tools fpcalc /songs/sondrop-214817309.mp3`
+`docker exec music-tools fpcalc /data/sondrop-214817309.mp3`
 
 For easier parsing, ask fpcalc for JSON:
-`docker run --rm -v "$(pwd)/build/upload:/songs" music-tools fpcalc -json /songs/sondrop-214817309.mp3`
+`docker exec music-tools fpcalc -json /data/sondrop-214817309.mp3`
 
-The important output fields are:
-- `DURATION`: the detected audio duration in seconds
-- `FINGERPRINT`: the acoustic fingerprint we can store and compare later
 
 If your metadata contains non-Latin characters, use `--encoding utf16` to ensure the tags are written correctly:
-`docker run --rm -v "$(pwd)/build/upload:/songs" music-tools   eyeD3 --encoding utf16 /songs/sondrop-214817309.mp3`
+`docker exec music-tools eyeD3 --encoding utf16 /data/sondrop-214817309.mp3`
 
-The backend now uses this Docker image automatically when it analyzes uploads with eyeD3.
+The backend expects a running container named `music-tools` and uses it when it
+analyzes uploads with eyeD3, fpcalc, and songrec.
+Pass `-docker_mount_point` with the path where the same data root is mounted
+inside that container.
 
 ## Docker Compose Deployment
 
 For a Linux server deployment, use `Dockerfile.app` and `docker-compose.yml`.
-The app container needs access to the host Docker socket because the backend runs
-the `music-tools` image for `eyeD3` and `songrec`.
+The app container needs access to the host Docker socket because the backend
+execs commands inside the long-running `music-tools` container for `eyeD3`,
+`fpcalc`, and `songrec`.
 
 Recommended server layout:
 
@@ -147,9 +116,9 @@ Create persistent data folders:
 
 ```bash
 mkdir -p \
-  "$SONDROP_INSTALLATION_PATH/data/tmp_upload" \
-  "$SONDROP_INSTALLATION_PATH/data/upload" \
-  "$SONDROP_INSTALLATION_PATH/data/config"
+  PATH_TO_SONDROP_DATA/data/tmp_upload \
+  PATH_TO_SONDROP_DATA/data/upload \
+  PATH_TO_SONDROP_DATA/data/config
 ```
 
 Build both images:
@@ -158,11 +127,11 @@ Build both images:
 docker-compose build
 ```
 
-Create-the first user:
+Create the first user:
 
 ```bash
 docker-compose run --rm sondrop create-user \
-  -auth-db "$SONDROP_INSTALLATION_PATH/data/config/auth.db" \
+  -auth-db /data/config/auth.db \
   -username admin \
   -password 'change-this'
 ```
@@ -173,6 +142,10 @@ Start the app:
 docker-compose -p sondrop -f /mnt/craid1/docker-containers/sondrop/docker/docker-compose.yml up -d
 ```
 
+The `music-tools` container stays running so the backend can reuse it with
+`docker exec music-tools ...` instead of creating and tearing down a new Docker
+network interface for every analysis command.
+
 The `sondrop` container joins the external `cloudflare` network and listens on
 port `8080` inside that network. Point your Cloudflare tunnel or reverse proxy
 at `http://sondrop:8080`.
@@ -181,4 +154,5 @@ And to update the server to the latest changes:
 
 ```bash
 docker-compose build
+docker-compose up -d
 ```

@@ -10,8 +10,9 @@ func main() {
 	if err := setLogLevel(cfg.logLevel); err != nil {
 		log.Fatal(err)
 	}
+	configureMusicTools(cfg.rootPath, cfg.dockerMountPoint)
 
-	authDB, err := openAuthDB(cfg.authDBPath)
+	authDB, err := openAuthDB(cfg.rootPath + "/" + cfg.authDBPath)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -46,6 +47,10 @@ func main() {
 	Infof("upload dir: %s", cfg.uploadDir)
 	Infof("auth db: %s", cfg.authDBPath)
 	Infof("log level: %s", cfg.logLevel)
+	Infof("docker mount point: %s", cfg.dockerMountPoint)
+	if cfg.rootPath != "" {
+		Infof("root path: %s", cfg.rootPath)
+	}
 
 	if err := app.listenAndServe(cfg.addr); err != nil {
 		log.Fatal(err)

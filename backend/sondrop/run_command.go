@@ -1,15 +1,25 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
-const musicToolsImage = "music-tools"
+const musicToolsContainerName = "music-tools"
+
+var serverRootPath string
+var dockerMountPoint string
+
+func configureMusicTools(rootPath string, mountPoint string) {
+	serverRootPath = rootPath
+	dockerMountPoint = mountPoint
+}
 
 func runEyeD3(parent context.Context, filePath string) (string, error) {
 	return runMusicToolsCommand(
@@ -81,10 +91,18 @@ func applySelectedMetadataWithLyrics(parent context.Context, filePath string, se
 		args = append(args, "-G", genre)
 	}
 	if artworkPath != "" {
-		args = append(args, "--add-image", "/songs/"+filepath.Base(artworkPath)+":FRONT_COVER")
+		musicToolsArtworkPath, err := musicToolsPath(artworkPath)
+		if err != nil {
+			return "", fmt.Errorf("resolve artwork path: %w", err)
+		}
+		args = append(args, "--add-image", musicToolsArtworkPath+":FRONT_COVER")
 	}
 	if lyricsPath != "" {
-		args = append(args, "--add-lyrics", "/songs/"+filepath.Base(lyricsPath))
+		musicToolsLyricsPath, err := musicToolsPath(lyricsPath)
+		if err != nil {
+			return "", fmt.Errorf("resolve lyrics path: %w", err)
+		}
+		args = append(args, "--add-lyrics", musicToolsLyricsPath)
 	}
 
 	args = append(args, "--encoding", "utf16")
@@ -106,24 +124,58 @@ func runMusicToolsCommand(parent context.Context, filePath string, tool string, 
 	if err != nil {
 		return "", fmt.Errorf("resolve upload path: %w", err)
 	}
-
-	songsDir := filepath.Dir(absolutePath)
-	songPath := "/songs/" + filepath.Base(absolutePath)
+	musicToolsFilePath, err := musicToolsPath(absolutePath)
+	if err != nil {
+		return "", err
+	}
 
 	commandArgs := []string{
-		"run",
-		"--rm",
-		"-v",
-		fmt.Sprintf("%s:/songs", songsDir),
-		musicToolsImage,
+		"exec",
+		musicToolsContainerName,
 		tool,
 	}
 	commandArgs = append(commandArgs, args...)
-	commandArgs = append(commandArgs, songPath)
+	commandArgs = append(commandArgs, musicToolsFilePath)
 
 	cmd := exec.CommandContext(ctx, "docker", commandArgs...)
 	Debugf("running command: %q", cmd.Args)
 
-	output, err := cmd.CombinedOutput()
-	return string(output), err
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	err = cmd.Run()
+	if err != nil {
+		stderrText := strings.TrimSpace(stderr.String())
+		if stderrText != "" {
+			Errorf("command stderr: %s", stderrText)
+		}
+	}
+
+	return stdout.String() + stderr.String(), err
+}
+
+func musicToolsPath(path string) (string, error) {
+	absolutePath, err := filepath.Abs(path)
+	if err != nil {
+		return "", err
+	}
+	if serverRootPath == "" {
+		return absolutePath, nil
+	}
+
+	absoluteRootPath, err := filepath.Abs(serverRootPath)
+	if err != nil {
+		return "", err
+	}
+	relativePath, err := filepath.Rel(absoluteRootPath, absolutePath)
+	if err != nil {
+		return "", err
+	}
+	if relativePath == ".." || strings.HasPrefix(relativePath, ".."+string(filepath.Separator)) {
+		return "", fmt.Errorf("%s is outside root path %s", absolutePath, absoluteRootPath)
+	}
+
+	return filepath.ToSlash(filepath.Join(dockerMountPoint, relativePath)), nil
 }
