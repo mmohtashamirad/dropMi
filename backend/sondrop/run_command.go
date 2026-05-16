@@ -76,7 +76,7 @@ func runFPCalc(parent context.Context, filePath string) (audioFingerprint, strin
 }
 
 func applySelectedMetadataWithLyrics(parent context.Context, filePath string, selectedMetadata map[string]string, artworkPath string, lyricsPath string) (string, error) {
-	var args []string
+	args := []string{"--remove-all"}
 
 	if artist := selectedMetadata["artist"]; artist != "" {
 		args = append(args, "-a", artist, "-b", artist)
@@ -89,6 +89,12 @@ func applySelectedMetadataWithLyrics(parent context.Context, filePath string, se
 	}
 	if genre := selectedMetadata["genre"]; genre != "" {
 		args = append(args, "-G", genre)
+	}
+	if comment := selectedMetadata["comment"]; comment != "" {
+		args = append(args, "--comment", comment)
+	}
+	if language := selectedMetadata["language"]; language != "" {
+		args = append(args, "--text-frame", "TLAN:"+language)
 	}
 	if artworkPath != "" {
 		musicToolsArtworkPath, err := musicToolsPath(artworkPath)

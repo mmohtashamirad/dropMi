@@ -1,6 +1,14 @@
 import { elements } from "/authorized/dom.js";
 import { resetDropMessage, setProgress, showScreen } from "/authorized/screen-ui.js";
 
+const NO_LYRICS_OPTION = {
+  title: "No lyrics",
+  artist: "",
+  album: "",
+  syncedLyrics: "",
+  plainLyrics: "No lyric or removed by dropmi"
+};
+
 export function clearResultError() {
   const existingError = elements.resultScreen.querySelector(".result-error");
   if (existingError) {
@@ -82,6 +90,8 @@ function renderComparisonTable(eyeD3Output, songrecOutput) {
     ["Track Name", eyeD3Data.trackName, songrecData.trackName],
     ["Album", eyeD3Data.album, songrecData.album],
     ["Genre", eyeD3Data.genre, songrecData.genre],
+    ["Comment", eyeD3Data.comment, songrecData.comment],
+    ["Language", eyeD3Data.language, songrecData.language],
     ["Album Art", eyeD3Data.albumArt, songrecData.albumArt]
   ];
 
@@ -138,14 +148,14 @@ function renderDuplicateNotice(duplicate) {
 function renderLyricsOptions(options) {
   elements.lyricsOptions.innerHTML = "";
 
-  if (!Array.isArray(options) || options.length === 0) {
+  if (!Array.isArray(options)) {
     elements.lyricsSection.hidden = true;
     return;
   }
 
   elements.lyricsSection.hidden = false;
 
-  options.forEach((option) => {
+  [NO_LYRICS_OPTION, ...options].forEach((option) => {
     const item = document.createElement("details");
     item.className = "lyrics-option";
 
@@ -217,6 +227,8 @@ function extractEyeD3Fields(output) {
     trackName: parsed.title || "",
     album: parsed.album || "",
     genre: extractEyeD3Genre(parsed),
+    comment: extractEyeD3Comment(parsed),
+    language: extractEyeD3Language(parsed),
     albumArt: extractEyeD3AlbumArt(parsed)
   };
 }
@@ -230,6 +242,8 @@ function extractSongrecFields(output) {
     trackName: track.title || "",
     album: "",
     genre: track.genres?.primary || "",
+    comment: "",
+    language: "",
     albumArt: track.images?.coverart || track.images?.coverarthq || track.images?.background || ""
   };
 }
@@ -244,6 +258,49 @@ function extractEyeD3Genre(parsed) {
   }
 
   return "";
+}
+
+function extractEyeD3Comment(parsed) {
+  if (typeof parsed.comment === "string") {
+    return parsed.comment;
+  }
+
+  if (typeof parsed.comments === "string") {
+    return parsed.comments;
+  }
+
+  if (Array.isArray(parsed.comments)) {
+    const comment = parsed.comments.find((item) => item?.text || item?.comment);
+    return comment?.text || comment?.comment || "";
+  }
+
+  return "";
+}
+
+function extractEyeD3Language(parsed) {
+  if (typeof parsed.language === "string") {
+    return parsed.language;
+  }
+
+  if (typeof parsed.languages === "string") {
+    return parsed.languages;
+  }
+
+  if (Array.isArray(parsed.languages)) {
+    return parsed.languages.filter(Boolean).join(", ");
+  }
+
+  return extractEyeD3TextFrame(parsed, "TLAN");
+}
+
+function extractEyeD3TextFrame(parsed, frameID) {
+  const frames = parsed.text_frames || parsed.textFrames;
+  if (!Array.isArray(frames)) {
+    return "";
+  }
+
+  const frame = frames.find((item) => item?.id === frameID || item?.frame_id === frameID);
+  return frame?.text || frame?.value || "";
 }
 
 function extractEyeD3AlbumArt(parsed) {
@@ -291,6 +348,8 @@ function emptyMetadata() {
     trackName: "",
     album: "",
     genre: "",
+    comment: "",
+    language: "",
     albumArt: ""
   };
 }
