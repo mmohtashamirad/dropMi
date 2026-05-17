@@ -240,12 +240,26 @@ function extractSongrecFields(output) {
   return {
     artist: track.subtitle || firstArtistId(track.artists),
     trackName: track.title || "",
-    album: "",
+    album: extractSongrecAlbum(track),
     genre: track.genres?.primary || "",
     comment: "",
     language: "",
     albumArt: track.images?.coverart || track.images?.coverarthq || track.images?.background || ""
   };
+}
+
+function extractSongrecAlbum(track) {
+  if (!Array.isArray(track.sections) || track.sections.length === 0) {
+    return "";
+  }
+
+  const metadata = track.sections[0].metadata;
+  if (!Array.isArray(metadata)) {
+    return "";
+  }
+
+  const albumMeta = metadata.find((item) => item?.title === "Album");
+  return albumMeta?.text || "";
 }
 
 function extractEyeD3Genre(parsed) {
