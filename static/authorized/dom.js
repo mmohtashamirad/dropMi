@@ -10,6 +10,7 @@ export const elements = {
   duplicateNotice: document.getElementById("duplicate-notice"),
   fileInput: document.getElementById("file-input"),
   findLyricsButton: document.getElementById("find-lyrics-button"),
+  reshazamButton: document.getElementById("reshazam-button"),
   lyricsSearchInput: document.getElementById("lyrics-search-input"),
   lyricsOptions: document.getElementById("lyrics-options"),
   lyricsSection: document.getElementById("lyrics-section"),

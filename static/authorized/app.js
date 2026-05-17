@@ -11,7 +11,8 @@ import {
   renderConfirmError,
   resetResultScreen,
   setLyricsOptions,
-  showResult
+  showResult,
+  updateSongrecResult
 } from "/authorized/result-ui.js";
 import {
   resetDropMessage,
@@ -19,9 +20,10 @@ import {
   setDraggingState,
   showScreen
 } from "/authorized/screen-ui.js";
-import { cancelUpload, confirmUpload, findLyricsBySearchText, uploadFile } from "/authorized/upload-client.js";
+import { cancelUpload, confirmUpload, findLyricsBySearchText, reShazam, uploadFile } from "/authorized/upload-client.js";
 
 let currentUploadId = "";
+let currentResultPayload = null;
 let dragDepth = 0;
 let activeUpload = null;
 let lyricsSearchRequestId = 0;
@@ -111,6 +113,40 @@ elements.okButton.addEventListener("click", async () => {
   finishResultAction();
 });
 
+elements.reshazamButton.addEventListener("click", async () => {
+  if (!currentUploadId) {
+    return;
+  }
+
+  elements.reshazamButton.disabled = true;
+  elements.reshazamButton.textContent = "Re-shazaming...";
+  clearTransientResultError();
+
+  const result = await reShazam(currentUploadId);
+  if (!result.ok) {
+    renderConfirmError(result.error);
+    elements.reshazamButton.disabled = false;
+    elements.reshazamButton.textContent = "Re-shazam";
+    return;
+  }
+
+  if (result.payload) {
+    currentResultPayload = currentResultPayload
+      ? {
+          ...currentResultPayload,
+          songrecOutput: result.payload.songrecOutput || ""
+        }
+      : {
+          uploadId: currentUploadId,
+          songrecOutput: result.payload.songrecOutput || ""
+        };
+    updateSongrecResult(currentResultPayload.songrecOutput);
+  }
+
+  elements.reshazamButton.disabled = false;
+  elements.reshazamButton.textContent = "Re-shazam";
+});
+
 elements.cancelResultButton.addEventListener("click", async () => {
   elements.cancelResultButton.disabled = true;
   elements.okButton.disabled = true;
@@ -181,16 +217,20 @@ function startUpload(file) {
     onSuccess(payload) {
       activeUpload = null;
       currentUploadId = payload.uploadId || "";
+      currentResultPayload = payload;
       updateQueueStatus();
       showResult(payload, false);
+      elements.reshazamButton.disabled = !currentUploadId;
       fillLyricsSearchInput();
       maybeStartLyricsSearch();
     },
     onError(payload) {
       activeUpload = null;
       currentUploadId = payload.uploadId || "";
+      currentResultPayload = payload;
       updateQueueStatus();
       showResult(payload, true);
+      elements.reshazamButton.disabled = !currentUploadId;
       fillLyricsSearchInput();
       maybeStartLyricsSearch();
     },
@@ -209,8 +249,11 @@ function startUpload(file) {
 
 function finishResultAction() {
   currentUploadId = "";
+  currentResultPayload = null;
   lyricsSearchRequestId += 1;
   resetResultScreen();
+  elements.reshazamButton.disabled = true;
+  elements.reshazamButton.textContent = "Re-shazam";
   elements.okButton.disabled = false;
   elements.cancelResultButton.disabled = false;
   elements.findLyricsButton.disabled = false;

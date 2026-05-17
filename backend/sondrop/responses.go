@@ -45,6 +45,10 @@ type confirmRequest struct {
 	SelectedLyrics   *lyricsOption     `json:"selectedLyrics,omitempty"`
 }
 
+type reshazamRequest struct {
+	UploadID string `json:"uploadId"`
+}
+
 type confirmResponse struct {
 	FileName string `json:"fileName,omitempty"`
 	Message  string `json:"message,omitempty"`

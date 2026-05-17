@@ -9,6 +9,9 @@ const NO_LYRICS_OPTION = {
   plainLyrics: "No lyric or removed by dropmi"
 };
 
+let lastEyeD3Output = "";
+let lastSongrecOutput = "";
+
 export function clearResultError() {
   const existingError = elements.resultScreen.querySelector(".result-error");
   if (existingError) {
@@ -26,11 +29,14 @@ export function renderConfirmError(message) {
 }
 
 export function showResult(payload, isError) {
+  lastEyeD3Output = payload.eyeD3Output || "";
+  lastSongrecOutput = payload.songrecOutput || "";
+
   setProgress(100);
   showScreen(elements.resultScreen);
   elements.resultFileName.textContent = payload.fileName ? `File: ${payload.fileName}` : "";
   renderDuplicateNotice(payload.duplicate);
-  renderComparisonTable(payload.eyeD3Output, payload.songrecOutput);
+  renderComparisonTable(lastEyeD3Output, lastSongrecOutput);
   renderLyricsOptions(payload.lyricsOptions || []);
   clearResultError();
 
@@ -44,6 +50,8 @@ export function showResult(payload, isError) {
 }
 
 export function resetResultScreen() {
+  lastEyeD3Output = "";
+  lastSongrecOutput = "";
   elements.resultFileName.textContent = "";
   renderDuplicateNotice(null);
   elements.resultTableBody.innerHTML = "";
@@ -52,6 +60,11 @@ export function resetResultScreen() {
   resetDropMessage();
   clearResultError();
   elements.fileInput.value = "";
+}
+
+export function updateSongrecResult(songrecOutput) {
+  lastSongrecOutput = songrecOutput || "";
+  renderComparisonTable(lastEyeD3Output, lastSongrecOutput);
 }
 
 export function setLyricsOptions(options) {

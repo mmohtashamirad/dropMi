@@ -222,6 +222,74 @@ func (s *server) handleUpload(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (s *server) handleReshazam(w http.ResponseWriter, r *http.Request) {
+	username, ok := s.requireAuth(w, r)
+	if !ok {
+		return
+	}
+
+	if r.Method != http.MethodPost {
+		w.Header().Set("Allow", http.MethodPost)
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req reshazamRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, analyzeResponse{
+			Error: "Unable to read request.",
+		})
+		return
+	}
+
+	uploadID, err := validateUploadID(req.UploadID)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, analyzeResponse{
+			Error: err.Error(),
+		})
+		return
+	}
+
+	sourcePath := tempUploadPath(s.uploadTmpDir, username, uploadID)
+	if _, err := os.Stat(sourcePath); err != nil {
+		status := http.StatusInternalServerError
+		message := "Unable to find the uploaded file."
+		if errors.Is(err, os.ErrNotExist) {
+			status = http.StatusNotFound
+			message = "Uploaded file not found."
+		}
+
+		writeJSON(w, status, analyzeResponse{
+			UploadID: uploadID,
+			FileName: filepath.Base(sourcePath),
+			Error:    message,
+		})
+		return
+	}
+
+	songrecOutput, songrecErr := runSongRec(r.Context(), sourcePath)
+	if songrecErr != nil {
+		message := "songrec could not analyze the file."
+		if errors.Is(songrecErr, context.DeadlineExceeded) {
+			message = "songrec took too long to analyze the file."
+		}
+
+		writeJSON(w, http.StatusInternalServerError, analyzeResponse{
+			UploadID:      uploadID,
+			FileName:      filepath.Base(sourcePath),
+			SongrecOutput: songrecOutput,
+			Error:         message,
+		})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, analyzeResponse{
+		UploadID:      uploadID,
+		FileName:      filepath.Base(sourcePath),
+		SongrecOutput: songrecOutput,
+	})
+}
+
 func (s *server) findDuplicateUpload(ctx context.Context, path string) (*duplicateSong, error) {
 	fingerprint, _, err := runFPCalc(ctx, path)
 	if err != nil {

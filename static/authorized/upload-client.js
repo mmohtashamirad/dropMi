@@ -165,6 +165,16 @@ export async function cancelUpload(uploadId) {
   );
 }
 
+export async function reShazam(uploadId) {
+  return submitUploadAction(
+    "/reshazam",
+    {
+      uploadId
+    },
+    "The server could not re-analyze the uploaded file."
+  );
+}
+
 async function submitUploadAction(url, body, fallbackError) {
   const result = await postJSON(url, body, fallbackError);
 
