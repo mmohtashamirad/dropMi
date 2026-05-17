@@ -5,6 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math/rand"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -34,12 +36,95 @@ func runEyeD3(parent context.Context, filePath string) (string, error) {
 }
 
 func runSongRec(parent context.Context, filePath string) (string, error) {
+	// Get audio duration
+	fingerprint, _, err := runFPCalc(parent, filePath)
+	if err != nil {
+		return "", fmt.Errorf("get audio duration: %w", err)
+	}
+
+	// If the song is shorter than 15 seconds, use the whole file
+	duration := fingerprint.Duration
+	if duration <= 15 {
+		return runMusicToolsCommand(
+			parent,
+			filePath,
+			"songrec",
+			"audio-file-to-recognized-song",
+		)
+	}
+
+	// Create fragment file path with `.frag` inserted before the original extension
+	fragmentPath := fragmentFileName(filePath)
+
+	// Extract random 15-second fragment using ffmpeg
+	err = extractAudioFragment(parent, filePath, fragmentPath, duration)
+	if err != nil {
+		return "", fmt.Errorf("extract audio fragment: %w", err)
+	}
+
+	// Clean up fragment file after we're done
+	defer os.Remove(fragmentPath)
+
+	// Run songrec on the fragment
 	return runMusicToolsCommand(
 		parent,
-		filePath,
+		fragmentPath,
 		"songrec",
 		"audio-file-to-recognized-song",
 	)
+}
+
+func fragmentFileName(filePath string) string {
+	ext := filepath.Ext(filePath)
+	if ext == "" {
+		return filePath + ".frag"
+	}
+	return strings.TrimSuffix(filePath, ext) + "..frag" + ext
+}
+
+func extractAudioFragment(parent context.Context, inputPath string, outputPath string, totalDuration float64) error {
+	ctx, cancel := context.WithTimeout(parent, 30*time.Second)
+	defer cancel()
+
+	// Calculate random start time (allowing 15 seconds from that point)
+	maxStartTime := totalDuration - 15
+	startTime := rand.Float64() * maxStartTime
+
+	// Convert paths to docker mount paths
+	musicToolsInputPath, err := musicToolsPath(inputPath)
+	if err != nil {
+		return fmt.Errorf("resolve input path: %w", err)
+	}
+	musicToolsOutputPath, err := musicToolsPath(outputPath)
+	if err != nil {
+		return fmt.Errorf("resolve output path: %w", err)
+	}
+
+	cmd := exec.CommandContext(ctx, "docker", "exec", musicToolsContainerName, "ffmpeg",
+		"-ss", fmt.Sprintf("%.2f", startTime),
+		"-i", musicToolsInputPath,
+		"-t", "15",
+		"-c", "copy",
+		"-y",
+		musicToolsOutputPath,
+	)
+
+	Debugf("running command: %q", cmd.Args)
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	err = cmd.Run()
+	if err != nil {
+		stderrText := strings.TrimSpace(stderr.String())
+		if stderrText != "" {
+			Errorf("ffmpeg stderr: %s", stderrText)
+		}
+	}
+
+	return err
 }
 
 type audioFingerprint struct {
