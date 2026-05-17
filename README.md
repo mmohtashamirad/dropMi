@@ -153,6 +153,6 @@ at `http://sondrop:8080`.
 And to update the server to the latest changes:
 
 ```bash
-docker-compose build
-docker-compose up -d
+docker-compose -p sondrop -f /mnt/craid1/docker-containers/sondrop/docker/docker-compose.yml build --no-cache sondrop
+docker-compose -p sondrop -f /mnt/craid1/docker-containers/sondrop/docker/docker-compose.yml up -d
 ```
