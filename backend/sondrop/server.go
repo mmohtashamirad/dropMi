@@ -29,8 +29,8 @@ func (s *server) routes() http.Handler {
 	publicFileServer := http.FileServer(http.Dir("./static/public"))
 	authorizedFileServer := http.FileServer(http.Dir("./static/authorized"))
 
-	mux.Handle("/public/", http.StripPrefix("/public/", publicFileServer))
-	mux.Handle("/authorized/", s.requireAuthorizedPage(http.StripPrefix("/authorized/", authorizedFileServer)))
+	mux.Handle("/public/", http.StripPrefix("/public/", s.noCacheMiddleware(publicFileServer)))
+	mux.Handle("/authorized/", s.requireAuthorizedPage(http.StripPrefix("/authorized/", s.noCacheMiddleware(authorizedFileServer))))
 	mux.HandleFunc("/login", s.handleLogin)
 	mux.HandleFunc("/session", s.handleSession)
 	mux.HandleFunc("/logout", s.handleLogout)
@@ -54,6 +54,10 @@ func (s *server) handleIndex(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+	w.Header().Set("Pragma", "no-cache")
+	w.Header().Set("Expires", "0")
+
 	if _, ok := s.authenticatedUsername(r); ok {
 		http.ServeFile(w, r, "./static/authorized/index.html")
 		return
@@ -69,6 +73,15 @@ func (s *server) requireAuthorizedPage(next http.Handler) http.Handler {
 			return
 		}
 
+		next.ServeHTTP(w, r)
+	})
+}
+
+func (s *server) noCacheMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+		w.Header().Set("Pragma", "no-cache")
+		w.Header().Set("Expires", "0")
 		next.ServeHTTP(w, r)
 	})
 }
