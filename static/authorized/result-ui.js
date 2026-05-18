@@ -95,6 +95,22 @@ export function getSelectedLyricsOption() {
   }
 }
 
+export function highlightMissingRequiredRows() {
+  const inputs = elements.resultTableBody.querySelectorAll('[data-selected-tag][required]');
+  let anyMissing = false;
+  inputs.forEach((input) => {
+    const tr = input.closest('tr');
+    if (!tr) return;
+    if (!input.value.trim()) {
+      tr.classList.add('required-missing');
+      anyMissing = true;
+    } else {
+      tr.classList.remove('required-missing');
+    }
+  });
+  return anyMissing;
+}
+
 function renderComparisonTable(eyeD3Output, songrecOutput) {
   const eyeD3Data = extractEyeD3Fields(eyeD3Output);
   const songrecData = extractSongrecFields(songrecOutput);
@@ -441,6 +457,12 @@ function createEditableCell(label, value) {
   if (label === "Language") {
     input.required = true;
   }
+
+  // Remove red highlight when user starts typing
+  input.addEventListener('input', () => {
+    const tr = input.closest('tr');
+    if (tr && input.value.trim()) tr.classList.remove('required-missing');
+  });
 
   if (label === "Album Art") {
     input.rows = 3;

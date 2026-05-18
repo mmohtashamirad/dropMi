@@ -12,7 +12,8 @@ import {
   resetResultScreen,
   setLyricsOptions,
   showResult,
-  updateSongrecResult
+  updateSongrecResult,
+  highlightMissingRequiredRows
 } from "/authorized/result-ui.js";
 import {
   resetDropMessage,
@@ -91,13 +92,13 @@ elements.findLyricsButton.addEventListener("click", () => {
 });
 
 elements.okButton.addEventListener("click", async () => {
-  const metadata = getSelectedMetadata();
-  const language = (metadata.language || "").trim();
-
-  if (!language) {
-    renderConfirmError("Language is required before confirming.");
+  // Highlight any required empty rows (e.g. Language). If any missing, stop.
+  const hasMissing = highlightMissingRequiredRows();
+  if (hasMissing) {
     return;
   }
+
+  const metadata = getSelectedMetadata();
 
   elements.okButton.disabled = true;
   elements.cancelResultButton.disabled = true;

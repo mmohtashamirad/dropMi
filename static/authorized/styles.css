@@ -482,6 +482,16 @@ h1 {
   margin-top: 10px;
 }
 
+/* Highlight rows with missing required fields */
+.required-missing td {
+  background: rgba(228, 104, 92, 0.26);
+}
+
+.required-missing .editable-value {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 6px rgba(230, 115, 105, 0.368);
+}
+
 .result-error {
   position: relative;
   margin-top: 18px;
