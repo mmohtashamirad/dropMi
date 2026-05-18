@@ -2,11 +2,11 @@ import { elements } from "/authorized/dom.js";
 import { resetDropMessage, setProgress, showScreen } from "/authorized/screen-ui.js";
 
 const NO_LYRICS_OPTION = {
-  title: "No lyrics",
+  title: "Enter Your Own Lyrics",
   artist: "",
   album: "",
   syncedLyrics: "",
-  plainLyrics: "No lyric or removed by dropmi"
+  plainLyrics: "No lyric or removed by DropMi"
 };
 
 let lastEyeD3Output = "";
@@ -184,7 +184,7 @@ function renderLyricsOptions(options) {
 
   elements.lyricsSection.hidden = false;
 
-  [NO_LYRICS_OPTION, ...options].forEach((option) => {
+  [NO_LYRICS_OPTION, ...options].forEach((option, index) => {
     const item = document.createElement("details");
     item.className = "lyrics-option";
 
@@ -209,6 +209,7 @@ function renderLyricsOptions(options) {
     const radio = document.createElement("input");
     radio.type = "radio";
     radio.name = "selected-lyrics-option";
+    // set initial radio value; for editable option we'll update on input
     radio.value = JSON.stringify(option);
     selectorRow.appendChild(radio);
     const selectorText = document.createElement("span");
@@ -223,10 +224,32 @@ function renderLyricsOptions(options) {
       item.appendChild(meta);
     }
 
-    const body = document.createElement("pre");
-    body.className = "lyrics-body";
-    body.textContent = option.syncedLyrics || option.plainLyrics || "No lyrics available.";
-    item.appendChild(body);
+    // For the special No Lyrics option (index 0) render an editable textarea
+    if (index === 0) {
+      const textarea = document.createElement('textarea');
+      textarea.className = 'lyrics-edit-box';
+      textarea.value = option.syncedLyrics || option.plainLyrics || '';
+      // keep radio value in sync with edited content
+      textarea.addEventListener('input', () => {
+        try {
+          const updated = Object.assign({}, option, { syncedLyrics: textarea.value, plainLyrics: textarea.value });
+          radio.value = JSON.stringify(updated);
+        } catch (e) {
+          // ignore
+        }
+      });
+      // ensure initial radio value includes current textarea value
+      try {
+        const initial = Object.assign({}, option, { syncedLyrics: textarea.value, plainLyrics: textarea.value });
+        radio.value = JSON.stringify(initial);
+      } catch (e) {}
+      item.appendChild(textarea);
+    } else {
+      const body = document.createElement("pre");
+      body.className = "lyrics-body";
+      body.textContent = option.syncedLyrics || option.plainLyrics || "No lyrics available.";
+      item.appendChild(body);
+    }
 
     elements.lyricsOptions.appendChild(item);
   });

@@ -427,6 +427,19 @@ h1 {
   color: var(--text);
 }
 
+/* Editable lyrics textarea used for the "No lyrics" option */
+.lyrics-edit-box {
+  width: 100%;
+  min-height: 140px;
+  border: 1px solid var(--editable-border);
+  border-radius: 12px;
+  padding: 10px 12px;
+  font: inherit;
+  color: var(--text);
+  background: var(--editable-bg);
+  resize: vertical;
+}
+
 .result-table {
   width: 100%;
   border-collapse: collapse;
