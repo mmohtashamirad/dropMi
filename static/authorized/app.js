@@ -91,6 +91,13 @@ elements.findLyricsButton.addEventListener("click", () => {
   startLyricsSearch({ showMissingMetadataError: true });
 });
 
+elements.lyricsSearchInput.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    elements.findLyricsButton.click();
+  }
+});
+
 elements.okButton.addEventListener("click", async () => {
   // Highlight any required empty rows (e.g. Language). If any missing, stop.
   const hasMissing = highlightMissingRequiredRows();

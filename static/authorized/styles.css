@@ -97,7 +97,7 @@ body {
 }
 
 .panel {
-  width: min(680px, 100%);
+  width: min(1200px, 100%);
   min-height: 320px;
   padding: 48px 32px;
   border-radius: 28px;
