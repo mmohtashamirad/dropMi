@@ -91,6 +91,14 @@ elements.findLyricsButton.addEventListener("click", () => {
 });
 
 elements.okButton.addEventListener("click", async () => {
+  const metadata = getSelectedMetadata();
+  const language = (metadata.language || "").trim();
+
+  if (!language) {
+    renderConfirmError("Language is required before confirming.");
+    return;
+  }
+
   elements.okButton.disabled = true;
   elements.cancelResultButton.disabled = true;
   elements.okButton.textContent = "Moving file...";
@@ -98,7 +106,7 @@ elements.okButton.addEventListener("click", async () => {
   if (currentUploadId) {
     const confirmation = await confirmUpload(
       currentUploadId,
-      getSelectedMetadata(),
+      metadata,
       getSelectedLyricsOption()
     );
     if (!confirmation.ok) {

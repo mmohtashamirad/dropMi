@@ -438,6 +438,10 @@ function createEditableCell(label, value) {
   input.setAttribute("aria-label", `${label} selected value`);
   input.dataset.selectedTag = tagKey;
 
+  if (label === "Language") {
+    input.required = true;
+  }
+
   if (label === "Album Art") {
     input.rows = 3;
     const preview = document.createElement("div");

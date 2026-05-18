@@ -179,7 +179,12 @@ func applySelectedMetadataWithLyrics(parent context.Context, filePath string, se
 		args = append(args, "--comment", comment)
 	}
 	if language := selectedMetadata["language"]; language != "" {
-		args = append(args, "--text-frame", "TLAN:"+language)
+		// Normalize language: first letter uppercase, rest lowercase
+		normalizedLanguage := strings.ToLower(language)
+		if len(normalizedLanguage) > 0 {
+			normalizedLanguage = strings.ToUpper(normalizedLanguage[:1]) + normalizedLanguage[1:]
+		}
+		args = append(args, "--text-frame", "TLAN:"+normalizedLanguage)
 	}
 	if artworkPath != "" {
 		musicToolsArtworkPath, err := musicToolsPath(artworkPath)
