@@ -27,7 +27,7 @@ func (s *server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ok, err := authenticateUser(s.authDB, req.Username, req.Password)
+	ok, err := authenticateUser(s.authDB, s.authMethod, s.navidromeURL, req.Username, req.Password)
 	if err != nil {
 		Errorf("authenticate user: %v", err)
 		writeJSON(w, http.StatusInternalServerError, loginResponse{

@@ -21,3 +21,7 @@ upload_dir=upload
 # Authentication database path
 auth_db=config/auth.db
 
+# Choose authentication method: local or navidrome
+auth_method=local
+# navidrome_url=https://navidrome.example.com
+

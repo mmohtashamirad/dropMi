@@ -14,6 +14,8 @@ type config struct {
 	UploadDir        string
 	Addr             string
 	AuthDBPath       string
+	AuthMethod       string
+	NavidromeURL     string
 	LogLevel         string
 	RootPath         string
 	DockerMountPoint string
@@ -50,6 +52,16 @@ func parseConfig() (*commandConfig, config) {
 	if cfg.AuthDBPath == "" {
 		cfg.AuthDBPath = "./auth.db"
 	}
+	if cfg.AuthMethod == "" {
+		cfg.AuthMethod = "local"
+	}
+	cfg.AuthMethod = strings.ToLower(cfg.AuthMethod)
+	if cfg.AuthMethod != "local" && cfg.AuthMethod != "navidrome" {
+		log.Fatal("auth_method must be either local or navidrome")
+	}
+	if cfg.AuthMethod == "navidrome" && cfg.NavidromeURL == "" {
+		log.Fatal("navidrome_url must be set when auth_method=navidrome")
+	}
 	if cfg.LogLevel == "" {
 		cfg.LogLevel = "info"
 	}
@@ -80,9 +92,10 @@ func parseCreateUserCommand() (*commandConfig, config) {
 	createUserFlags := flag.NewFlagSet("create-user", flag.ExitOnError)
 	createUserFlags.StringVar(&cmd.username, "username", "", "username to create")
 	createUserFlags.StringVar(&cmd.password, "password", "", "password to store for the user")
-	createUserFlags.StringVar(&configPath, "config", "", "path to the JSON config file")
-	createUserFlags.StringVar(&configPath, "c", "", "path to the JSON config file")
+	createUserFlags.StringVar(&configPath, "config", "", "path to the config file")
+	createUserFlags.StringVar(&configPath, "c", "", "path to the config file")
 	createUserFlags.StringVar(&cfg.AuthDBPath, "auth-db", "./auth.db", "SQLite auth database path")
+	createUserFlags.StringVar(&cfg.AuthMethod, "auth-method", "local", "authentication method to use: local or navidrome")
 	createUserFlags.StringVar(&cfg.LogLevel, "log-level", "info", "backend log level: debug, info, warning, or error")
 	createUserFlags.Parse(os.Args[2:])
 
@@ -90,6 +103,14 @@ func parseCreateUserCommand() (*commandConfig, config) {
 		if err := readConfigFile(configPath, &cfg); err != nil {
 			log.Fatal(err)
 		}
+	}
+
+	if cfg.AuthMethod == "" {
+		cfg.AuthMethod = "local"
+	}
+	cfg.AuthMethod = strings.ToLower(cfg.AuthMethod)
+	if cfg.AuthMethod != "local" {
+		log.Fatal("create-user is only supported with auth_method=local")
 	}
 
 	if cfg.AuthDBPath == "" {
@@ -134,6 +155,10 @@ func readConfigFile(path string, cfg *config) error {
 			cfg.Addr = value
 		case "auth_db":
 			cfg.AuthDBPath = value
+		case "auth_method":
+			cfg.AuthMethod = value
+		case "navidrome_url":
+			cfg.NavidromeURL = value
 		case "log_level":
 			cfg.LogLevel = value
 		case "root_path":

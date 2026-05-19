@@ -11,6 +11,8 @@ type server struct {
 	authDB       *sql.DB
 	songs        *songStore
 	sessions     *sessionStore
+	authMethod   string
+	navidromeURL string
 }
 
 func newServer(cfg config, authDB *sql.DB, songs *songStore) *server {
@@ -20,6 +22,8 @@ func newServer(cfg config, authDB *sql.DB, songs *songStore) *server {
 		authDB:       authDB,
 		songs:        songs,
 		sessions:     newSessionStore(authDB),
+		authMethod:   cfg.AuthMethod,
+		navidromeURL: cfg.NavidromeURL,
 	}
 }
 

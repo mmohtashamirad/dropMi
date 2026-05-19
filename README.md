@@ -12,8 +12,36 @@ SonDrop is a small Go web application for dropping an audio file into the browse
 
 ## Run Locally
 
-Config your server using the config file. Refer to dropmi-config.conf.example
+Config your server using the config file. Refer to `dropmi-config.conf.example`.
 You can also add comments using `#` prefix.
+
+A local auth setup looks like this:
+
+```ini
+# Server configuration
+addr=:8080
+log_level=debug
+
+auth_method=local
+# auth_db can still be overridden if needed
+auth_db=config/auth.db
+
+# Music data paths (relative to root_path if set)
+upload_tmp_dir=tmp_upload
+upload_dir=upload
+
+root_path=/data
+docker_mount_point=/data
+```
+
+Or use Navidrome authentication:
+
+```ini
+auth_method=navidrome
+navidrome_url=https://navidrome.example.com
+```
+
+SonDrop will validate login credentials against Navidrome, then issue its own local session token for the browser.
 
 Then run:
 
@@ -34,7 +62,7 @@ Passwords are stored as plain text for now so we can take auth in small steps.
 Create a user:
 
 ```bash
-./build/sondrop create-user -config ./sondrop-config.json -username admin -password secret
+./build/sondrop create-user -config ./sondrop-config.conf -username admin -password secret
 ```
 
 The auth database defaults to `./auth.db` unless overridden in the config file or via `-auth-db`:
@@ -42,6 +70,8 @@ The auth database defaults to `./auth.db` unless overridden in the config file o
 ```bash
 ./build/sondrop create-user -auth-db ./my-auth.db -username admin -password secret
 ```
+
+Create-user only works when `auth_method=local`.
 
 After creating a user, the site now starts on a login screen.
 Only a correct username and password can access the upload UI.

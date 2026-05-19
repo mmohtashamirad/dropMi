@@ -19,6 +19,9 @@ func main() {
 	defer authDB.Close()
 
 	if command != nil {
+		if cfg.AuthMethod != "local" {
+			log.Fatal("create-user is only supported with auth_method=local")
+		}
 		if err := createUser(authDB, command.username, command.password); err != nil {
 			log.Fatal(err)
 		}
@@ -46,6 +49,10 @@ func main() {
 	Infof("upload temp dir: %s", cfg.UploadTmpDir)
 	Infof("upload dir: %s", cfg.UploadDir)
 	Infof("auth db: %s", cfg.AuthDBPath)
+	Infof("auth method: %s", cfg.AuthMethod)
+	if cfg.AuthMethod == "navidrome" {
+		Infof("navidrome url: %s", cfg.NavidromeURL)
+	}
 	Infof("log level: %s", cfg.LogLevel)
 	Infof("docker mount point: %s", cfg.DockerMountPoint)
 	if cfg.RootPath != "" {
