@@ -12,11 +12,14 @@ SonDrop is a small Go web application for dropping an audio file into the browse
 
 ## Run Locally
 
-From the project root:
+Config your server using the config file. Refer to dropmi-config.conf.example
+You can also add comments using `#` prefix.
+
+Then run:
 
 ```bash
 mkdir -p tmp/data/tmp_upload tmp/data/upload tmp/data/config
-make && ./build/sondrop -p $(pwd)/tmp/data/ -m /data -t tmp_upload/ -u upload/ -auth-db config/auth.db  -log-level debug
+make && ./build/sondrop -config ./sondrop-config.conf
 ```
 
 The server starts on `http://serverIP:8080`.
@@ -31,10 +34,10 @@ Passwords are stored as plain text for now so we can take auth in small steps.
 Create a user:
 
 ```bash
-./build/sondrop create-user -username admin -password secret
+./build/sondrop create-user -config ./sondrop-config.json -username admin -password secret
 ```
 
-The auth database defaults to `./auth.db`, or you can override it:
+The auth database defaults to `./auth.db` unless overridden in the config file or via `-auth-db`:
 
 ```bash
 ./build/sondrop create-user -auth-db ./my-auth.db -username admin -password secret

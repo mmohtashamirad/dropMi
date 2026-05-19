@@ -1,0 +1,23 @@
+# Server configuration
+addr=:8080
+log_level=debug
+
+# Docker container mount configuration
+# root_path is the base directory for all file operations. If set, 
+# upload_tmp_dir and upload_dir are relative to this path. When running
+# in dev mode or without Docker, root_path should point the directory 
+# where upload_tmp_dir and upload_dir and all other data directories
+# are located. When running in Docker, root_path should point to the
+# directory that is mounted to the container, normally /data.
+root_path=/data
+# docker_mount_point is used for music-tools docker container. We always
+# use music-tools in Docker.
+docker_mount_point=/data
+
+# Music data paths (relative to root_path if set)
+upload_tmp_dir=tmp_upload
+upload_dir=upload
+
+# Authentication database path
+auth_db=config/auth.db
+

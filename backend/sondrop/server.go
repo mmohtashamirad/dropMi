@@ -15,8 +15,8 @@ type server struct {
 
 func newServer(cfg config, authDB *sql.DB, songs *songStore) *server {
 	return &server{
-		uploadTmpDir: cfg.uploadTmpDir,
-		uploadDir:    cfg.uploadDir,
+		uploadTmpDir: cfg.UploadTmpDir,
+		uploadDir:    cfg.UploadDir,
 		authDB:       authDB,
 		songs:        songs,
 		sessions:     newSessionStore(authDB),

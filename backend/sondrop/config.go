@@ -2,19 +2,21 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 type config struct {
-	uploadTmpDir     string
-	uploadDir        string
-	addr             string
-	authDBPath       string
-	logLevel         string
-	rootPath         string
-	dockerMountPoint string
+	UploadTmpDir     string
+	UploadDir        string
+	Addr             string
+	AuthDBPath       string
+	LogLevel         string
+	RootPath         string
+	DockerMountPoint string
 }
 
 type commandConfig struct {
@@ -28,34 +30,44 @@ func parseConfig() (*commandConfig, config) {
 	}
 
 	var cfg config
+	var configPath string
 
-	flag.StringVar(&cfg.uploadTmpDir, "upload-tmp-dir", "", "directory for uploaded files pending confirmation")
-	flag.StringVar(&cfg.uploadTmpDir, "t", "", "directory for uploaded files pending confirmation")
-	flag.StringVar(&cfg.uploadDir, "upload-dir", "", "directory for confirmed uploaded files")
-	flag.StringVar(&cfg.uploadDir, "u", "", "directory for confirmed uploaded files")
-	flag.StringVar(&cfg.addr, "addr", ":8080", "HTTP listen address")
-	flag.StringVar(&cfg.authDBPath, "auth-db", "./auth.db", "SQLite auth database path")
-	flag.StringVar(&cfg.logLevel, "log-level", "info", "backend log level: debug, info, warning, or error")
-	flag.StringVar(&cfg.rootPath, "p", "", "shared root path for SonDrop data")
-	flag.StringVar(&cfg.rootPath, "root-path", "", "shared root path for SonDrop data")
-	flag.StringVar(&cfg.dockerMountPoint, "m", "", "path where root_path is mounted inside Docker containers")
-	flag.StringVar(&cfg.dockerMountPoint, "docker-mount-point", "", "path where root_path is mounted inside Docker containers")
+	flag.StringVar(&configPath, "config", "", "path to the JSON config file")
+	flag.StringVar(&configPath, "c", "", "path to the JSON config file")
 	flag.Parse()
 
-	if cfg.uploadTmpDir == "" || cfg.uploadDir == "" {
-		log.Fatal("both -upload-tmp-dir/-t and -upload-dir/-u must be supplied")
-	}
-	if cfg.dockerMountPoint == "" {
-		log.Fatal("-docker-mount-point must be supplied")
+	if configPath == "" {
+		log.Fatal("must supply -config path to the JSON config file")
 	}
 
-	cfg.rootPath = cleanPath(cfg.rootPath)
-	cfg.dockerMountPoint = cleanPath(cfg.dockerMountPoint)
-	cfg.uploadTmpDir = resolveDataPath(cfg.rootPath, cfg.uploadTmpDir)
-	cfg.uploadDir = resolveDataPath(cfg.rootPath, cfg.uploadDir)
+	if err := readConfigFile(configPath, &cfg); err != nil {
+		log.Fatal(err)
+	}
 
-	ensureDir(cfg.uploadTmpDir, "upload tmp dir")
-	ensureDir(cfg.uploadDir, "upload dir")
+	if cfg.Addr == "" {
+		cfg.Addr = ":8080"
+	}
+	if cfg.AuthDBPath == "" {
+		cfg.AuthDBPath = "./auth.db"
+	}
+	if cfg.LogLevel == "" {
+		cfg.LogLevel = "info"
+	}
+
+	if cfg.UploadTmpDir == "" || cfg.UploadDir == "" {
+		log.Fatal("upload_tmp_dir and upload_dir must be set in the config file")
+	}
+	if cfg.DockerMountPoint == "" {
+		log.Fatal("docker_mount_point must be set in the config file")
+	}
+
+	cfg.RootPath = cleanPath(cfg.RootPath)
+	cfg.DockerMountPoint = cleanPath(cfg.DockerMountPoint)
+	cfg.UploadTmpDir = resolveDataPath(cfg.RootPath, cfg.UploadTmpDir)
+	cfg.UploadDir = resolveDataPath(cfg.RootPath, cfg.UploadDir)
+
+	ensureDir(cfg.UploadTmpDir, "upload tmp dir")
+	ensureDir(cfg.UploadDir, "upload dir")
 
 	return nil, cfg
 }
@@ -63,19 +75,77 @@ func parseConfig() (*commandConfig, config) {
 func parseCreateUserCommand() (*commandConfig, config) {
 	var cmd commandConfig
 	var cfg config
+	var configPath string
 
 	createUserFlags := flag.NewFlagSet("create-user", flag.ExitOnError)
 	createUserFlags.StringVar(&cmd.username, "username", "", "username to create")
 	createUserFlags.StringVar(&cmd.password, "password", "", "password to store for the user")
-	createUserFlags.StringVar(&cfg.authDBPath, "auth-db", "./auth.db", "SQLite auth database path")
-	createUserFlags.StringVar(&cfg.logLevel, "log-level", "info", "backend log level: debug, info, warning, or error")
+	createUserFlags.StringVar(&configPath, "config", "", "path to the JSON config file")
+	createUserFlags.StringVar(&configPath, "c", "", "path to the JSON config file")
+	createUserFlags.StringVar(&cfg.AuthDBPath, "auth-db", "./auth.db", "SQLite auth database path")
+	createUserFlags.StringVar(&cfg.LogLevel, "log-level", "info", "backend log level: debug, info, warning, or error")
 	createUserFlags.Parse(os.Args[2:])
+
+	if configPath != "" {
+		if err := readConfigFile(configPath, &cfg); err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	if cfg.AuthDBPath == "" {
+		cfg.AuthDBPath = "./auth.db"
+	}
 
 	if cmd.username == "" || cmd.password == "" {
 		log.Fatal("create-user requires both -username and -password")
 	}
 
 	return &cmd, cfg
+}
+
+func readConfigFile(path string, cfg *config) error {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return fmt.Errorf("open config file: %w", err)
+	}
+
+	lines := strings.Split(string(data), "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+
+		parts := strings.SplitN(line, "=", 2)
+		if len(parts) != 2 {
+			return fmt.Errorf("invalid config line (expected key=value): %s", line)
+		}
+
+		key := strings.TrimSpace(parts[0])
+		value := strings.TrimSpace(parts[1])
+
+		switch key {
+		case "upload_tmp_dir":
+			cfg.UploadTmpDir = value
+		case "upload_dir":
+			cfg.UploadDir = value
+		case "addr":
+			cfg.Addr = value
+		case "auth_db":
+			cfg.AuthDBPath = value
+		case "log_level":
+			cfg.LogLevel = value
+		case "root_path":
+			cfg.RootPath = value
+		case "docker_mount_point":
+			cfg.DockerMountPoint = value
+		default:
+			return fmt.Errorf("unknown config key: %s", key)
+		}
+	}
+
+	return nil
 }
 
 func ensureDir(path string, label string) {

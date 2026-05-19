@@ -7,12 +7,12 @@ import (
 
 func main() {
 	command, cfg := parseConfig()
-	if err := setLogLevel(cfg.logLevel); err != nil {
+	if err := setLogLevel(cfg.LogLevel); err != nil {
 		log.Fatal(err)
 	}
-	configureMusicTools(cfg.rootPath, cfg.dockerMountPoint)
+	configureMusicTools(cfg.RootPath, cfg.DockerMountPoint)
 
-	authDB, err := openAuthDB(cfg.rootPath + "/" + cfg.authDBPath)
+	authDB, err := openAuthDB(cfg.RootPath + "/" + cfg.AuthDBPath)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -23,16 +23,16 @@ func main() {
 			log.Fatal(err)
 		}
 
-		Infof("created user %q in %s", command.username, cfg.authDBPath)
+		Infof("created user %q in %s", command.username, cfg.AuthDBPath)
 		return
 	}
 
-	if err := cleanUploadTmpFiles(cfg.uploadTmpDir); err != nil {
+	if err := cleanUploadTmpFiles(cfg.UploadTmpDir); err != nil {
 		log.Fatal(err)
 	}
-	startUploadTmpCleaner(cfg.uploadTmpDir)
+	startUploadTmpCleaner(cfg.UploadTmpDir)
 
-	songs, err := newSongStore(authDB, cfg.uploadDir)
+	songs, err := newSongStore(authDB, cfg.UploadDir)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -42,17 +42,17 @@ func main() {
 
 	app := newServer(cfg, authDB, songs)
 
-	Infof("listening on http://localhost%s", cfg.addr)
-	Infof("upload temp dir: %s", cfg.uploadTmpDir)
-	Infof("upload dir: %s", cfg.uploadDir)
-	Infof("auth db: %s", cfg.authDBPath)
-	Infof("log level: %s", cfg.logLevel)
-	Infof("docker mount point: %s", cfg.dockerMountPoint)
-	if cfg.rootPath != "" {
-		Infof("root path: %s", cfg.rootPath)
+	Infof("listening on http://localhost%s", cfg.Addr)
+	Infof("upload temp dir: %s", cfg.UploadTmpDir)
+	Infof("upload dir: %s", cfg.UploadDir)
+	Infof("auth db: %s", cfg.AuthDBPath)
+	Infof("log level: %s", cfg.LogLevel)
+	Infof("docker mount point: %s", cfg.DockerMountPoint)
+	if cfg.RootPath != "" {
+		Infof("root path: %s", cfg.RootPath)
 	}
 
-	if err := app.listenAndServe(cfg.addr); err != nil {
+	if err := app.listenAndServe(cfg.Addr); err != nil {
 		log.Fatal(err)
 	}
 }
