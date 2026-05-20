@@ -46,13 +46,16 @@ func validateUploadID(uploadID string) (string, error) {
 	return uploadID, nil
 }
 
-func tempUserDir(rootDir string, username string) string {
-	userPart := sanitizePathPart(username)
+func userPathPart(username string) string {
+	userPart := strings.ToLower(sanitizePathPart(username))
 	if userPart == "" {
 		userPart = "unknown_user"
 	}
+	return userPart
+}
 
-	return filepath.Join(rootDir, userPart)
+func tempUserDir(rootDir string, username string) string {
+	return filepath.Join(rootDir, userPathPart(username))
 }
 
 func tempUploadPath(rootDir string, username string, uploadID string) string {
@@ -60,10 +63,7 @@ func tempUploadPath(rootDir string, username string, uploadID string) string {
 }
 
 func metadataDrivenUploadPath(rootDir string, username string, selectedMetadata map[string]string, sourcePath string, fallbackName string) string {
-	userPart := sanitizePathPart(username)
-	if userPart == "" {
-		userPart = "unknown_user"
-	}
+	userPart := userPathPart(username)
 
 	artistPart := sanitizePathPart(selectedMetadata["artist"])
 	if artistPart == "" {
