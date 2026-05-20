@@ -420,6 +420,17 @@ h1 {
   min-width: 0;
 }
 
+.lyrics-status {
+  margin-left: 6px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.lyrics-status.synced {
+  color: var(--success);
+}
+
 .lyrics-selector {
   display: flex;
   align-items: center;

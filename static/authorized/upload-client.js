@@ -145,6 +145,7 @@ async function searchLyrics(query) {
           .filter((item) => item.syncedLyrics || item.plainLyrics)
           .map((item) => ({
             title: buildLyricsTitle(item),
+            lyricsStatus: item.syncedLyrics ? "Synced" : "Plain",
             artist: item.artistName || "",
             album: item.albumName || "",
             duration: item.duration || 0,

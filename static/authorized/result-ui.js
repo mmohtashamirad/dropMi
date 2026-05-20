@@ -193,6 +193,12 @@ function renderLyricsOptions(options) {
     const summaryTitle = document.createElement("span");
     summaryTitle.className = "lyrics-summary-title";
     summaryTitle.textContent = option.title || "Lyrics option";
+    if (option.lyricsStatus) {
+      const status = document.createElement("span");
+      status.className = `lyrics-status ${option.lyricsStatus.toLowerCase()}`;
+      status.textContent = ` (${option.lyricsStatus})`;
+      summaryTitle.appendChild(status);
+    }
     summary.appendChild(summaryTitle);
 
     const duration = formatDuration(option.duration);
