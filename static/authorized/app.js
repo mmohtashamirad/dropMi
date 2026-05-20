@@ -157,6 +157,8 @@ elements.reshazamButton.addEventListener("click", async () => {
           songrecOutput: result.payload.songrecOutput || ""
         };
     updateSongrecResult(currentResultPayload.songrecOutput);
+    fillLyricsSearchInput();
+    maybeStartLyricsSearch();
   }
 
   elements.reshazamButton.disabled = false;
@@ -358,6 +360,7 @@ async function startLyricsSearch({ showMissingMetadataError }) {
   const lyricsSearchText = elements.lyricsSearchInput.value.trim();
 
   elements.findLyricsButton.disabled = true;
+  elements.reshazamButton.disabled = true;
   elements.findLyricsButton.textContent = "Finding lyrics...";
   clearTransientResultError();
 
@@ -372,12 +375,14 @@ async function startLyricsSearch({ showMissingMetadataError }) {
     }
     elements.findLyricsButton.disabled = false;
     elements.findLyricsButton.textContent = "Find lyrics";
+    elements.reshazamButton.disabled = !currentUploadId;
     return;
   }
 
   setLyricsOptions(result.payload?.lyricsOptions || []);
   elements.findLyricsButton.disabled = false;
   elements.findLyricsButton.textContent = "Find lyrics";
+  elements.reshazamButton.disabled = !currentUploadId;
 }
 
 function fillLyricsSearchInput() {

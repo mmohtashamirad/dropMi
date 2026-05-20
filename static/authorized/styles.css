@@ -211,6 +211,28 @@ h1 {
   transform: translateY(-1px);
 }
 
+.primary-button:disabled,
+.secondary-button:disabled,
+.toolbar-button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.primary-button:disabled {
+  background: rgba(224, 154, 98, 0.45);
+  color: #fffaf3;
+}
+
+.secondary-button:disabled {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--muted);
+}
+
+.toolbar-button:disabled {
+  color: var(--muted);
+}
+
 .primary-button {
   background: var(--accent);
   color: #fffaf3;
