@@ -59,12 +59,24 @@ export function uploadFile(file, callbacks) {
   };
 }
 
+function trimSelectedMetadata(selectedMetadata) {
+  const trimmed = {};
+  if (!selectedMetadata) {
+    return trimmed;
+  }
+
+  Object.entries(selectedMetadata).forEach(([key, value]) => {
+    trimmed[key] = (value || "").trim();
+  });
+  return trimmed;
+}
+
 export async function confirmUpload(uploadId, selectedMetadata, selectedLyrics) {
   return submitUploadAction(
     "/confirm",
     {
       uploadId,
-      selectedMetadata,
+      selectedMetadata: trimSelectedMetadata(selectedMetadata),
       selectedLyrics
     },
     "The server could not move the file into the upload directory."

@@ -12,6 +12,12 @@ import (
 
 const maxUploadSize = 100 << 20
 
+func trimMetadataValues(metadata map[string]string) {
+	for key, value := range metadata {
+		metadata[key] = strings.TrimSpace(value)
+	}
+}
+
 func (s *server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		w.Header().Set("Allow", http.MethodPost)
@@ -355,6 +361,7 @@ func (s *server) handleConfirm(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(req.SelectedMetadata) > 0 {
+		trimMetadataValues(req.SelectedMetadata)
 		Debugf("selected metadata for %q: %#v", uploadID, req.SelectedMetadata)
 	}
 
