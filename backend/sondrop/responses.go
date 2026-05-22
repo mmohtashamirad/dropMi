@@ -41,6 +41,16 @@ type sessionResponse struct {
 	IsAdmin       bool   `json:"isAdmin,omitempty"`
 }
 
+type tabItem struct {
+	Key       string `json:"key"`
+	Title     string `json:"title"`
+	AdminOnly bool   `json:"adminOnly,omitempty"`
+}
+
+type userTabsResponse struct {
+	Tabs []tabItem `json:"tabs"`
+}
+
 type confirmRequest struct {
 	UploadID         string            `json:"uploadId"`
 	SelectedMetadata map[string]string `json:"selectedMetadata,omitempty"`

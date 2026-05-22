@@ -43,6 +43,7 @@ func (s *server) routes() http.Handler {
 	mux.Handle("/authorized/", s.requireAuthorizedPage(http.StripPrefix("/authorized/", s.noCacheMiddleware(authorizedFileServer))))
 	mux.HandleFunc("/login", s.handleLogin)
 	mux.HandleFunc("/session", s.handleSession)
+	mux.HandleFunc("/user-tabs", s.handleUserTabs)
 	mux.HandleFunc("/refresh", s.handleRefresh)
 	mux.HandleFunc("/logout", s.handleLogout)
 	mux.HandleFunc("/upload", s.handleUpload)
@@ -75,6 +76,41 @@ func (s *server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.ServeFile(w, r, "./static/public/index.html")
+}
+
+func (s *server) handleUserTabs(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.Header().Set("Allow", http.MethodGet)
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	_, isAdmin, ok := s.authenticatedUser(r)
+	if !ok {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	availableTabs := []tabItem{
+		{Key: "drop", Title: "Drop", AdminOnly: false},
+		{Key: "tab2", Title: "Tab2", AdminOnly: false},
+		{Key: "tab3", Title: "Tab3", AdminOnly: false},
+		{Key: "tab4", Title: "Tab4", AdminOnly: false},
+		{Key: "tab5", Title: "Tab5", AdminOnly: false},
+		{Key: "tab6", Title: "Tab6", AdminOnly: true},
+		{Key: "tab7", Title: "Tab7", AdminOnly: false},
+		{Key: "tab8", Title: "Tab8", AdminOnly: true},
+	}
+
+	tabs := make([]tabItem, 0, len(availableTabs))
+	for _, tab := range availableTabs {
+		if tab.AdminOnly && !isAdmin {
+			continue
+		}
+		tabs = append(tabs, tab)
+	}
+
+	writeJSON(w, http.StatusOK, userTabsResponse{Tabs: tabs})
 }
 
 func (s *server) requireAuthorizedPage(next http.Handler) http.Handler {
