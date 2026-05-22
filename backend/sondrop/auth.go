@@ -54,6 +54,7 @@ func ensureAuthSchema(db *sql.DB) error {
 		CREATE TABLE IF NOT EXISTS refresh_tokens (
 			token TEXT PRIMARY KEY,
 			username TEXT NOT NULL,
+			is_admin INTEGER NOT NULL DEFAULT 0,
 			expires_at INTEGER NOT NULL,
 			created_at INTEGER NOT NULL
 		);
@@ -61,6 +62,11 @@ func ensureAuthSchema(db *sql.DB) error {
 
 	if _, err := db.Exec(refreshTokensQuery); err != nil {
 		return fmt.Errorf("ensure refresh token schema: %w", err)
+	}
+
+	const addIsAdminColumn = `ALTER TABLE refresh_tokens ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0;`
+	if _, err := db.Exec(addIsAdminColumn); err != nil && !strings.Contains(err.Error(), "duplicate column name") {
+		return fmt.Errorf("ensure refresh token admin column: %w", err)
 	}
 
 	return nil
@@ -83,11 +89,11 @@ func createUser(db *sql.DB, username string, password string) error {
 	return nil
 }
 
-func authenticateUser(db *sql.DB, authMethod string, navidromeURL string, username string, password string) (bool, error) {
+func authenticateUser(db *sql.DB, authMethod string, navidromeURL string, username string, password string) (bool, bool, error) {
 	username = strings.TrimSpace(username)
 	password = strings.TrimSpace(password)
 	if username == "" || password == "" {
-		return false, nil
+		return false, false, nil
 	}
 
 	switch strings.ToLower(authMethod) {
@@ -96,107 +102,116 @@ func authenticateUser(db *sql.DB, authMethod string, navidromeURL string, userna
 	case "navidrome":
 		return authenticateUserNavidrome(navidromeURL, username, password)
 	default:
-		return false, fmt.Errorf("unsupported auth method: %s", authMethod)
+		return false, false, fmt.Errorf("unsupported auth method: %s", authMethod)
 	}
 }
 
-func authenticateUserLocal(db *sql.DB, username, password string) (bool, error) {
+func authenticateUserLocal(db *sql.DB, username, password string) (bool, bool, error) {
 	var storedPassword string
 	err := db.QueryRow(`SELECT password FROM users WHERE username = ?`, username).Scan(&storedPassword)
 	if err == sql.ErrNoRows {
-		return false, nil
+		return false, false, nil
 	}
 	if err != nil {
-		return false, fmt.Errorf("authenticate user: %w", err)
+		return false, false, fmt.Errorf("authenticate user: %w", err)
 	}
 
-	return storedPassword == password, nil
+	return storedPassword == password, false, nil
 }
 
-func authenticateUserNavidrome(apiURL, username, password string) (bool, error) {
+type navidromeAuthResponse struct {
+	Username string `json:"username"`
+	IsAdmin  bool   `json:"isAdmin"`
+}
+
+func authenticateUserNavidrome(apiURL, username, password string) (bool, bool, error) {
 	apiURL = strings.TrimSpace(apiURL)
 	if apiURL == "" {
-		return false, fmt.Errorf("navidrome URL not configured")
+		return false, false, fmt.Errorf("navidrome URL not configured")
 	}
 
 	apiURL = strings.TrimRight(apiURL, "/")
 
-	tryEndpoint := func(path string) (bool, error) {
+	tryEndpoint := func(path string) (bool, bool, error) {
 		endpoint := apiURL + path
 		payload, err := json.Marshal(map[string]string{
 			"username": username,
 			"password": password,
 		})
 		if err != nil {
-			return false, fmt.Errorf("encode navidrome auth request: %w", err)
+			return false, false, fmt.Errorf("encode navidrome auth request: %w", err)
 		}
 
 		req, err := http.NewRequest(http.MethodPost, endpoint, bytes.NewReader(payload))
 		if err != nil {
-			return false, fmt.Errorf("build navidrome auth request: %w", err)
+			return false, false, fmt.Errorf("build navidrome auth request: %w", err)
 		}
 		req.Header.Set("Content-Type", "application/json")
 
 		resp, err := http.DefaultClient.Do(req)
 		if err != nil {
-			return false, fmt.Errorf("navidrome auth request: %w", err)
+			return false, false, fmt.Errorf("navidrome auth request: %w", err)
 		}
 		defer resp.Body.Close()
 
 		switch resp.StatusCode {
 		case http.StatusOK:
-			return true, nil
+			var authResp navidromeAuthResponse
+			if err := json.NewDecoder(resp.Body).Decode(&authResp); err == nil {
+				return true, authResp.IsAdmin, nil
+			}
+			return true, false, nil
 		case http.StatusUnauthorized:
-			return false, nil
+			return false, false, nil
 		case http.StatusNotFound, http.StatusMethodNotAllowed:
-			return false, fmt.Errorf("not found")
+			return false, false, fmt.Errorf("not found")
 		default:
-			return false, fmt.Errorf("navidrome auth returned status %d", resp.StatusCode)
+			return false, false, fmt.Errorf("navidrome auth returned status %d", resp.StatusCode)
 		}
 	}
 
 	// Try the actual login endpoint used by your Navidrome deployment first.
-	if ok, err := tryEndpoint("/auth/login"); err == nil || ok {
-		return ok, err
+	if ok, isAdmin, err := tryEndpoint("/auth/login"); err == nil || ok {
+		return ok, isAdmin, err
 	}
 
 	// Fall back to the standard Navidrome API path if needed.
-	if ok, err := tryEndpoint("/api/v1/auth/login"); err == nil || ok {
-		return ok, err
+	if ok, isAdmin, err := tryEndpoint("/api/v1/auth/login"); err == nil || ok {
+		return ok, isAdmin, err
 	}
 
 	return authenticateUserNavidromeBasic(apiURL, username, password)
 }
 
-func authenticateUserNavidromeBasic(apiURL, username, password string) (bool, error) {
+func authenticateUserNavidromeBasic(apiURL, username, password string) (bool, bool, error) {
 	endpoint := strings.TrimRight(apiURL, "/") + "/api/v1/me"
 	req, err := http.NewRequest(http.MethodGet, endpoint, nil)
 	if err != nil {
-		return false, fmt.Errorf("build navidrome status request: %w", err)
+		return false, false, fmt.Errorf("build navidrome status request: %w", err)
 	}
 	req.SetBasicAuth(username, password)
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return false, fmt.Errorf("navidrome auth request: %w", err)
+		return false, false, fmt.Errorf("navidrome auth request: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusOK {
-		return true, nil
+		return true, false, nil
 	}
 	if resp.StatusCode == http.StatusUnauthorized {
-		return false, nil
+		return false, false, nil
 	}
 
-	return false, fmt.Errorf("navidrome auth returned status %d", resp.StatusCode)
+	return false, false, fmt.Errorf("navidrome auth returned status %d", resp.StatusCode)
 }
 
 func newSessionStore(db *sql.DB) *sessionStore {
 	return &sessionStore{db: db}
 }
 
-func (s *sessionStore) create(username string) (string, error) {
+func (s *sessionStore) create(username string, isAdmin bool) (string, error) {
 	tokenBytes := make([]byte, 32)
 	if _, err := rand.Read(tokenBytes); err != nil {
 		return "", fmt.Errorf("create session token: %w", err)
@@ -208,10 +223,15 @@ func (s *sessionStore) create(username string) (string, error) {
 	// For backward compatibility, insert with a long expiry (30 days) if used directly.
 	expires := time.Now().Add(30 * 24 * time.Hour).Unix()
 	created := time.Now().Unix()
+	isAdminInt := 0
+	if isAdmin {
+		isAdminInt = 1
+	}
 	if _, err := s.db.Exec(
-		`INSERT INTO refresh_tokens (token, username, expires_at, created_at) VALUES (?, ?, ?, ?)`,
+		`INSERT INTO refresh_tokens (token, username, is_admin, expires_at, created_at) VALUES (?, ?, ?, ?, ?)`,
 		token,
 		username,
+		isAdminInt,
 		expires,
 		created,
 	); err != nil {
@@ -220,25 +240,26 @@ func (s *sessionStore) create(username string) (string, error) {
 
 	return token, nil
 }
-func (s *sessionStore) username(token string) (string, bool) {
+func (s *sessionStore) username(token string) (string, bool, bool) {
 	var username string
+	var isAdminInt int
 	var expiresAt int64
-	err := s.db.QueryRow(`SELECT username, expires_at FROM refresh_tokens WHERE token = ?`, token).Scan(&username, &expiresAt)
+	err := s.db.QueryRow(`SELECT username, is_admin, expires_at FROM refresh_tokens WHERE token = ?`, token).Scan(&username, &isAdminInt, &expiresAt)
 	if err == sql.ErrNoRows {
-		return "", false
+		return "", false, false
 	}
 	if err != nil {
 		Errorf("lookup refresh token %q: %v", token, err)
-		return "", false
+		return "", false, false
 	}
 
 	if time.Now().Unix() > expiresAt {
 		// Token expired; remove it
 		s.delete(token)
-		return "", false
+		return "", false, false
 	}
 
-	return username, true
+	return username, isAdminInt == 1, true
 }
 
 func (s *sessionStore) delete(token string) {
@@ -248,7 +269,7 @@ func (s *sessionStore) delete(token string) {
 }
 
 // createWithExpiry creates a refresh token for username with given expiry seconds.
-func (s *sessionStore) createWithExpiry(username string, expirySeconds int) (string, error) {
+func (s *sessionStore) createWithExpiry(username string, isAdmin bool, expirySeconds int) (string, error) {
 	tokenBytes := make([]byte, 32)
 	if _, err := rand.Read(tokenBytes); err != nil {
 		return "", fmt.Errorf("create refresh token: %w", err)
@@ -257,11 +278,16 @@ func (s *sessionStore) createWithExpiry(username string, expirySeconds int) (str
 	token := hex.EncodeToString(tokenBytes)
 	expires := time.Now().Add(time.Duration(expirySeconds) * time.Second).Unix()
 	created := time.Now().Unix()
+	isAdminInt := 0
+	if isAdmin {
+		isAdminInt = 1
+	}
 
 	if _, err := s.db.Exec(
-		`INSERT INTO refresh_tokens (token, username, expires_at, created_at) VALUES (?, ?, ?, ?)`,
+		`INSERT INTO refresh_tokens (token, username, is_admin, expires_at, created_at) VALUES (?, ?, ?, ?, ?)`,
 		token,
 		username,
+		isAdminInt,
 		expires,
 		created,
 	); err != nil {
@@ -272,15 +298,21 @@ func (s *sessionStore) createWithExpiry(username string, expirySeconds int) (str
 }
 
 // signJWT creates a signed JWT using the provided signing key and expiry seconds.
-func signJWT(signingKey string, username string, expirySeconds int) (string, error) {
+func signJWT(signingKey string, username string, expirySeconds int, isAdmin bool) (string, error) {
 	if signingKey == "" {
 		return "", fmt.Errorf("jwt signing key not configured")
 	}
 
-	claims := jwt.RegisteredClaims{
-		Subject:   username,
-		ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Duration(expirySeconds) * time.Second)),
-		IssuedAt:  jwt.NewNumericDate(time.Now()),
+	claims := struct {
+		Admin bool `json:"admin,omitempty"`
+		jwt.RegisteredClaims
+	}{
+		Admin: isAdmin,
+		RegisteredClaims: jwt.RegisteredClaims{
+			Subject:   username,
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Duration(expirySeconds) * time.Second)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+		},
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
@@ -291,24 +323,29 @@ func signJWT(signingKey string, username string, expirySeconds int) (string, err
 	return signed, nil
 }
 
-// parseJWT validates and parses the token, returning the username on success.
-func parseJWT(signingKey string, tokenStr string) (string, bool) {
+// parseJWT validates and parses the token, returning the username and admin state on success.
+func parseJWT(signingKey string, tokenStr string) (string, bool, bool) {
 	if signingKey == "" || tokenStr == "" {
-		return "", false
+		return "", false, false
 	}
 
-	token, err := jwt.ParseWithClaims(tokenStr, &jwt.RegisteredClaims{}, func(token *jwt.Token) (any, error) {
+	claims := struct {
+		Admin bool `json:"admin,omitempty"`
+		jwt.RegisteredClaims
+	}{}
+
+	token, err := jwt.ParseWithClaims(tokenStr, &claims, func(token *jwt.Token) (any, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
 		return []byte(signingKey), nil
 	})
 	if err != nil {
-		return "", false
+		return "", false, false
 	}
 
-	if claims, ok := token.Claims.(*jwt.RegisteredClaims); ok && token.Valid {
-		return claims.Subject, true
+	if token.Valid {
+		return claims.Subject, claims.Admin, true
 	}
-	return "", false
+	return "", false, false
 }

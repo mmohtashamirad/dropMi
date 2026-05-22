@@ -69,7 +69,7 @@ func (s *server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Pragma", "no-cache")
 	w.Header().Set("Expires", "0")
 
-	if _, ok := s.authenticatedUsername(r); ok {
+	if _, _, ok := s.authenticatedUser(r); ok {
 		http.ServeFile(w, r, "./static/authorized/index.html")
 		return
 	}
@@ -79,7 +79,7 @@ func (s *server) handleIndex(w http.ResponseWriter, r *http.Request) {
 
 func (s *server) requireAuthorizedPage(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if _, ok := s.authenticatedUsername(r); !ok {
+		if _, _, ok := s.authenticatedUser(r); !ok {
 			http.Redirect(w, r, "/", http.StatusSeeOther)
 			return
 		}

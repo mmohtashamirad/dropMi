@@ -31,12 +31,14 @@ type loginRequest struct {
 type loginResponse struct {
 	OK       bool   `json:"ok,omitempty"`
 	Username string `json:"username,omitempty"`
+	IsAdmin  bool   `json:"isAdmin,omitempty"`
 	Error    string `json:"error,omitempty"`
 }
 
 type sessionResponse struct {
 	Authenticated bool   `json:"authenticated"`
 	Username      string `json:"username,omitempty"`
+	IsAdmin       bool   `json:"isAdmin,omitempty"`
 }
 
 type confirmRequest struct {

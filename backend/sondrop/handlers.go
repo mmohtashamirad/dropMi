@@ -33,7 +33,7 @@ func (s *server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ok, err := authenticateUser(s.authDB, s.authMethod, s.navidromeURL, req.Username, req.Password)
+	ok, isAdmin, err := authenticateUser(s.authDB, s.authMethod, s.navidromeURL, req.Username, req.Password)
 	if err != nil {
 		Errorf("authenticate user: %v", err)
 		writeJSON(w, http.StatusInternalServerError, loginResponse{
@@ -52,7 +52,7 @@ func (s *server) handleLogin(w http.ResponseWriter, r *http.Request) {
 
 	// Issue a signed JWT as the session token. JWT signing key and expiry
 	// are configured on the server. This keeps authentication stateless.
-	jwtToken, err := signJWT(s.jwtSigningKey, req.Username, s.jwtExpirySecs)
+	jwtToken, err := signJWT(s.jwtSigningKey, req.Username, s.jwtExpirySecs, isAdmin)
 	if err != nil {
 		Errorf("sign jwt: %v", err)
 		writeJSON(w, http.StatusInternalServerError, loginResponse{
@@ -71,7 +71,7 @@ func (s *server) handleLogin(w http.ResponseWriter, r *http.Request) {
 
 	// Create a refresh token and set it as an HttpOnly cookie.
 	if s.sessions != nil {
-		refreshToken, err := s.sessions.createWithExpiry(req.Username, s.jwtRefreshExpirySecs)
+		refreshToken, err := s.sessions.createWithExpiry(req.Username, isAdmin, s.jwtRefreshExpirySecs)
 		if err != nil {
 			Errorf("create refresh token: %v", err)
 			writeJSON(w, http.StatusInternalServerError, loginResponse{
@@ -93,6 +93,7 @@ func (s *server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, loginResponse{
 		OK:       true,
 		Username: req.Username,
+		IsAdmin:  isAdmin,
 	})
 }
 
@@ -103,7 +104,7 @@ func (s *server) handleSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	username, ok := s.authenticatedUsername(r)
+	username, isAdmin, ok := s.authenticatedUser(r)
 	if !ok {
 		writeJSON(w, http.StatusOK, sessionResponse{
 			Authenticated: false,
@@ -114,6 +115,7 @@ func (s *server) handleSession(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, sessionResponse{
 		Authenticated: true,
 		Username:      username,
+		IsAdmin:       isAdmin,
 	})
 }
 
@@ -263,10 +265,10 @@ func (s *server) handleUpload(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *server) handleRefresh(w http.ResponseWriter, r *http.Request) {
-	username, ok := s.requireAuth(w, r)
+	username, isAdmin, ok := s.authenticatedUser(r)
 	if ok {
 		// Access token still valid; nothing to do
-		writeJSON(w, http.StatusOK, loginResponse{OK: true, Username: username})
+		writeJSON(w, http.StatusOK, loginResponse{OK: true, Username: username, IsAdmin: isAdmin})
 		return
 	}
 
@@ -277,7 +279,7 @@ func (s *server) handleRefresh(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	username, ok = s.sessions.username(cookie.Value)
+	username, isAdmin, ok = s.sessions.username(cookie.Value)
 	if !ok {
 		writeJSON(w, http.StatusUnauthorized, loginResponse{Error: "Invalid refresh token"})
 		return
@@ -285,7 +287,7 @@ func (s *server) handleRefresh(w http.ResponseWriter, r *http.Request) {
 
 	// Rotate refresh token: delete old, create new
 	s.sessions.delete(cookie.Value)
-	newRefresh, err := s.sessions.createWithExpiry(username, s.jwtRefreshExpirySecs)
+	newRefresh, err := s.sessions.createWithExpiry(username, isAdmin, s.jwtRefreshExpirySecs)
 	if err != nil {
 		Errorf("create refresh token: %v", err)
 		writeJSON(w, http.StatusInternalServerError, loginResponse{Error: "Unable to refresh token"})
@@ -293,7 +295,7 @@ func (s *server) handleRefresh(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Issue new access token
-	jwtToken, err := signJWT(s.jwtSigningKey, username, s.jwtExpirySecs)
+	jwtToken, err := signJWT(s.jwtSigningKey, username, s.jwtExpirySecs, isAdmin)
 	if err != nil {
 		Errorf("sign jwt: %v", err)
 		writeJSON(w, http.StatusInternalServerError, loginResponse{Error: "Unable to issue access token"})
@@ -315,7 +317,7 @@ func (s *server) handleRefresh(w http.ResponseWriter, r *http.Request) {
 		SameSite: http.SameSiteLaxMode,
 	})
 
-	writeJSON(w, http.StatusOK, loginResponse{OK: true, Username: username})
+	writeJSON(w, http.StatusOK, loginResponse{OK: true, Username: username, IsAdmin: isAdmin})
 }
 
 func (s *server) handleReshazam(w http.ResponseWriter, r *http.Request) {
@@ -647,7 +649,7 @@ func safeUploadSongPath(uploadDir string, relativePath string) (string, error) {
 }
 
 func (s *server) requireAuth(w http.ResponseWriter, r *http.Request) (string, bool) {
-	username, ok := s.authenticatedUsername(r)
+	username, _, ok := s.authenticatedUser(r)
 	if ok {
 		return username, true
 	}
@@ -658,18 +660,18 @@ func (s *server) requireAuth(w http.ResponseWriter, r *http.Request) (string, bo
 	return "", false
 }
 
-func (s *server) authenticatedUsername(r *http.Request) (string, bool) {
+func (s *server) authenticatedUser(r *http.Request) (string, bool, bool) {
 	cookie, err := r.Cookie(sessionCookieName)
 	if err != nil {
-		return "", false
+		return "", false, false
 	}
 	if s.jwtSigningKey == "" {
-		return "", false
+		return "", false, false
 	}
 
-	username, ok := parseJWT(s.jwtSigningKey, cookie.Value)
+	username, isAdmin, ok := parseJWT(s.jwtSigningKey, cookie.Value)
 	if !ok {
-		return "", false
+		return "", false, false
 	}
-	return username, true
+	return username, isAdmin, true
 }
