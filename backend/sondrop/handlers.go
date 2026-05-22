@@ -50,9 +50,11 @@ func (s *server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, err := s.sessions.create(req.Username)
+	// Issue a signed JWT as the session token. JWT signing key and expiry
+	// are configured on the server. This keeps authentication stateless.
+	jwtToken, err := signJWT(s.jwtSigningKey, req.Username, s.jwtExpirySecs)
 	if err != nil {
-		Errorf("create session: %v", err)
+		Errorf("sign jwt: %v", err)
 		writeJSON(w, http.StatusInternalServerError, loginResponse{
 			Error: "Unable to start your session.",
 		})
@@ -61,11 +63,31 @@ func (s *server) handleLogin(w http.ResponseWriter, r *http.Request) {
 
 	http.SetCookie(w, &http.Cookie{
 		Name:     sessionCookieName,
-		Value:    token,
+		Value:    jwtToken,
 		Path:     "/",
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
 	})
+
+	// Create a refresh token and set it as an HttpOnly cookie.
+	if s.sessions != nil {
+		refreshToken, err := s.sessions.createWithExpiry(req.Username, s.jwtRefreshExpirySecs)
+		if err != nil {
+			Errorf("create refresh token: %v", err)
+			writeJSON(w, http.StatusInternalServerError, loginResponse{
+				Error: "Unable to start your session.",
+			})
+			return
+		}
+
+		http.SetCookie(w, &http.Cookie{
+			Name:     refreshCookieName,
+			Value:    refreshToken,
+			Path:     "/",
+			HttpOnly: true,
+			SameSite: http.SameSiteLaxMode,
+		})
+	}
 
 	Infof("login successful for username %q", req.Username)
 	writeJSON(w, http.StatusOK, loginResponse{
@@ -102,12 +124,24 @@ func (s *server) handleLogout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if cookie, err := r.Cookie(sessionCookieName); err == nil {
-		s.sessions.delete(cookie.Value)
+	// Revoke refresh token if present
+	if cookie, err := r.Cookie(refreshCookieName); err == nil {
+		if s.sessions != nil {
+			s.sessions.delete(cookie.Value)
+		}
 	}
 
+	// Clear both cookies
 	http.SetCookie(w, &http.Cookie{
 		Name:     sessionCookieName,
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -1,
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+	})
+	http.SetCookie(w, &http.Cookie{
+		Name:     refreshCookieName,
 		Value:    "",
 		Path:     "/",
 		MaxAge:   -1,
@@ -226,6 +260,62 @@ func (s *server) handleUpload(w http.ResponseWriter, r *http.Request) {
 		EyeD3Output:   eyeD3Output,
 		SongrecOutput: songrecOutput,
 	})
+}
+
+func (s *server) handleRefresh(w http.ResponseWriter, r *http.Request) {
+	username, ok := s.requireAuth(w, r)
+	if ok {
+		// Access token still valid; nothing to do
+		writeJSON(w, http.StatusOK, loginResponse{OK: true, Username: username})
+		return
+	}
+
+	// Check refresh token
+	cookie, err := r.Cookie(refreshCookieName)
+	if err != nil || s.sessions == nil {
+		writeJSON(w, http.StatusUnauthorized, loginResponse{Error: "No refresh token"})
+		return
+	}
+
+	username, ok = s.sessions.username(cookie.Value)
+	if !ok {
+		writeJSON(w, http.StatusUnauthorized, loginResponse{Error: "Invalid refresh token"})
+		return
+	}
+
+	// Rotate refresh token: delete old, create new
+	s.sessions.delete(cookie.Value)
+	newRefresh, err := s.sessions.createWithExpiry(username, s.jwtRefreshExpirySecs)
+	if err != nil {
+		Errorf("create refresh token: %v", err)
+		writeJSON(w, http.StatusInternalServerError, loginResponse{Error: "Unable to refresh token"})
+		return
+	}
+
+	// Issue new access token
+	jwtToken, err := signJWT(s.jwtSigningKey, username, s.jwtExpirySecs)
+	if err != nil {
+		Errorf("sign jwt: %v", err)
+		writeJSON(w, http.StatusInternalServerError, loginResponse{Error: "Unable to issue access token"})
+		return
+	}
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     sessionCookieName,
+		Value:    jwtToken,
+		Path:     "/",
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+	})
+	http.SetCookie(w, &http.Cookie{
+		Name:     refreshCookieName,
+		Value:    newRefresh,
+		Path:     "/",
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+	})
+
+	writeJSON(w, http.StatusOK, loginResponse{OK: true, Username: username})
 }
 
 func (s *server) handleReshazam(w http.ResponseWriter, r *http.Request) {
@@ -573,7 +663,13 @@ func (s *server) authenticatedUsername(r *http.Request) (string, bool) {
 	if err != nil {
 		return "", false
 	}
+	if s.jwtSigningKey == "" {
+		return "", false
+	}
 
-	username, ok := s.sessions.username(cookie.Value)
-	return username, ok
+	username, ok := parseJWT(s.jwtSigningKey, cookie.Value)
+	if !ok {
+		return "", false
+	}
+	return username, true
 }

@@ -9,11 +9,15 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
+
+	"github.com/golang-jwt/jwt/v5"
 
 	_ "modernc.org/sqlite"
 )
 
 const sessionCookieName = "sondrop_session"
+const refreshCookieName = "sondrop_refresh"
 
 type sessionStore struct {
 	db *sql.DB
@@ -46,16 +50,17 @@ func ensureAuthSchema(db *sql.DB) error {
 		return fmt.Errorf("ensure auth schema: %w", err)
 	}
 
-	const sessionsQuery = `
-		CREATE TABLE IF NOT EXISTS sessions (
+	const refreshTokensQuery = `
+		CREATE TABLE IF NOT EXISTS refresh_tokens (
 			token TEXT PRIMARY KEY,
 			username TEXT NOT NULL,
-			created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+			expires_at INTEGER NOT NULL,
+			created_at INTEGER NOT NULL
 		);
 	`
 
-	if _, err := db.Exec(sessionsQuery); err != nil {
-		return fmt.Errorf("ensure session schema: %w", err)
+	if _, err := db.Exec(refreshTokensQuery); err != nil {
+		return fmt.Errorf("ensure refresh token schema: %w", err)
 	}
 
 	return nil
@@ -188,9 +193,7 @@ func authenticateUserNavidromeBasic(apiURL, username, password string) (bool, er
 }
 
 func newSessionStore(db *sql.DB) *sessionStore {
-	return &sessionStore{
-		db: db,
-	}
+	return &sessionStore{db: db}
 }
 
 func (s *sessionStore) create(username string) (string, error) {
@@ -201,25 +204,37 @@ func (s *sessionStore) create(username string) (string, error) {
 
 	token := hex.EncodeToString(tokenBytes)
 
+	// Default expires_at; caller should insert with expiry using createWithExpiry.
+	// For backward compatibility, insert with a long expiry (30 days) if used directly.
+	expires := time.Now().Add(30 * 24 * time.Hour).Unix()
+	created := time.Now().Unix()
 	if _, err := s.db.Exec(
-		`INSERT INTO sessions (token, username) VALUES (?, ?)`,
+		`INSERT INTO refresh_tokens (token, username, expires_at, created_at) VALUES (?, ?, ?, ?)`,
 		token,
 		username,
+		expires,
+		created,
 	); err != nil {
-		return "", fmt.Errorf("store session: %w", err)
+		return "", fmt.Errorf("store refresh token: %w", err)
 	}
 
 	return token, nil
 }
-
 func (s *sessionStore) username(token string) (string, bool) {
 	var username string
-	err := s.db.QueryRow(`SELECT username FROM sessions WHERE token = ?`, token).Scan(&username)
+	var expiresAt int64
+	err := s.db.QueryRow(`SELECT username, expires_at FROM refresh_tokens WHERE token = ?`, token).Scan(&username, &expiresAt)
 	if err == sql.ErrNoRows {
 		return "", false
 	}
 	if err != nil {
-		Errorf("lookup session %q: %v", token, err)
+		Errorf("lookup refresh token %q: %v", token, err)
+		return "", false
+	}
+
+	if time.Now().Unix() > expiresAt {
+		// Token expired; remove it
+		s.delete(token)
 		return "", false
 	}
 
@@ -227,7 +242,73 @@ func (s *sessionStore) username(token string) (string, bool) {
 }
 
 func (s *sessionStore) delete(token string) {
-	if _, err := s.db.Exec(`DELETE FROM sessions WHERE token = ?`, token); err != nil {
-		Errorf("delete session %q: %v", token, err)
+	if _, err := s.db.Exec(`DELETE FROM refresh_tokens WHERE token = ?`, token); err != nil {
+		Errorf("delete refresh token %q: %v", token, err)
 	}
+}
+
+// createWithExpiry creates a refresh token for username with given expiry seconds.
+func (s *sessionStore) createWithExpiry(username string, expirySeconds int) (string, error) {
+	tokenBytes := make([]byte, 32)
+	if _, err := rand.Read(tokenBytes); err != nil {
+		return "", fmt.Errorf("create refresh token: %w", err)
+	}
+
+	token := hex.EncodeToString(tokenBytes)
+	expires := time.Now().Add(time.Duration(expirySeconds) * time.Second).Unix()
+	created := time.Now().Unix()
+
+	if _, err := s.db.Exec(
+		`INSERT INTO refresh_tokens (token, username, expires_at, created_at) VALUES (?, ?, ?, ?)`,
+		token,
+		username,
+		expires,
+		created,
+	); err != nil {
+		return "", fmt.Errorf("store refresh token: %w", err)
+	}
+
+	return token, nil
+}
+
+// signJWT creates a signed JWT using the provided signing key and expiry seconds.
+func signJWT(signingKey string, username string, expirySeconds int) (string, error) {
+	if signingKey == "" {
+		return "", fmt.Errorf("jwt signing key not configured")
+	}
+
+	claims := jwt.RegisteredClaims{
+		Subject:   username,
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Duration(expirySeconds) * time.Second)),
+		IssuedAt:  jwt.NewNumericDate(time.Now()),
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	signed, err := token.SignedString([]byte(signingKey))
+	if err != nil {
+		return "", fmt.Errorf("sign jwt: %w", err)
+	}
+	return signed, nil
+}
+
+// parseJWT validates and parses the token, returning the username on success.
+func parseJWT(signingKey string, tokenStr string) (string, bool) {
+	if signingKey == "" || tokenStr == "" {
+		return "", false
+	}
+
+	token, err := jwt.ParseWithClaims(tokenStr, &jwt.RegisteredClaims{}, func(token *jwt.Token) (any, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		return []byte(signingKey), nil
+	})
+	if err != nil {
+		return "", false
+	}
+
+	if claims, ok := token.Claims.(*jwt.RegisteredClaims); ok && token.Valid {
+		return claims.Subject, true
+	}
+	return "", false
 }

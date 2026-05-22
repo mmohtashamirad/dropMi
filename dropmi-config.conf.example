@@ -25,3 +25,12 @@ auth_db=config/auth.db
 auth_method=local
 # navidrome_url=https://navidrome.example.com
 
+# JWT settings for session cookies
+# Generate a secure value with: openssl rand -hex 32
+# or: python3 -c 'import secrets; print(secrets.token_hex(32))'
+jwt_signing_key=replace-with-your-super-secret-key
+# Access token expiry in seconds (default 24 hours)
+jwt_expiry_seconds=86400
+# Refresh token expiry in seconds (default 7 days)
+jwt_refresh_expiry_seconds=604800
+

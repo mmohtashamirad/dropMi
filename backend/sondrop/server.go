@@ -6,24 +6,30 @@ import (
 )
 
 type server struct {
-	uploadTmpDir string
-	uploadDir    string
-	authDB       *sql.DB
-	songs        *songStore
-	sessions     *sessionStore
-	authMethod   string
-	navidromeURL string
+	uploadTmpDir         string
+	uploadDir            string
+	authDB               *sql.DB
+	songs                *songStore
+	sessions             *sessionStore
+	authMethod           string
+	navidromeURL         string
+	jwtSigningKey        string
+	jwtExpirySecs        int
+	jwtRefreshExpirySecs int
 }
 
 func newServer(cfg config, authDB *sql.DB, songs *songStore) *server {
 	return &server{
-		uploadTmpDir: cfg.UploadTmpDir,
-		uploadDir:    cfg.UploadDir,
-		authDB:       authDB,
-		songs:        songs,
-		sessions:     newSessionStore(authDB),
-		authMethod:   cfg.AuthMethod,
-		navidromeURL: cfg.NavidromeURL,
+		uploadTmpDir:         cfg.UploadTmpDir,
+		uploadDir:            cfg.UploadDir,
+		authDB:               authDB,
+		songs:                songs,
+		sessions:             newSessionStore(authDB),
+		authMethod:           cfg.AuthMethod,
+		navidromeURL:         cfg.NavidromeURL,
+		jwtSigningKey:        cfg.JwtSigningKey,
+		jwtExpirySecs:        cfg.JwtExpirySeconds,
+		jwtRefreshExpirySecs: cfg.JwtRefreshExpirySeconds,
 	}
 }
 
@@ -37,6 +43,7 @@ func (s *server) routes() http.Handler {
 	mux.Handle("/authorized/", s.requireAuthorizedPage(http.StripPrefix("/authorized/", s.noCacheMiddleware(authorizedFileServer))))
 	mux.HandleFunc("/login", s.handleLogin)
 	mux.HandleFunc("/session", s.handleSession)
+	mux.HandleFunc("/refresh", s.handleRefresh)
 	mux.HandleFunc("/logout", s.handleLogout)
 	mux.HandleFunc("/upload", s.handleUpload)
 	mux.HandleFunc("/confirm", s.handleConfirm)

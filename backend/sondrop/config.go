@@ -10,15 +10,18 @@ import (
 )
 
 type config struct {
-	UploadTmpDir     string
-	UploadDir        string
-	Addr             string
-	AuthDBPath       string
-	AuthMethod       string
-	NavidromeURL     string
-	LogLevel         string
-	RootPath         string
-	DockerMountPoint string
+	UploadTmpDir            string
+	UploadDir               string
+	Addr                    string
+	AuthDBPath              string
+	AuthMethod              string
+	NavidromeURL            string
+	JwtSigningKey           string
+	JwtExpirySeconds        int
+	JwtRefreshExpirySeconds int
+	LogLevel                string
+	RootPath                string
+	DockerMountPoint        string
 }
 
 type commandConfig struct {
@@ -62,8 +65,20 @@ func parseConfig() (*commandConfig, config) {
 	if cfg.AuthMethod == "navidrome" && cfg.NavidromeURL == "" {
 		log.Fatal("navidrome_url must be set when auth_method=navidrome")
 	}
+	if cfg.JwtSigningKey == "" {
+		log.Fatal("jwt_signing_key must be set in the config file")
+	}
 	if cfg.LogLevel == "" {
 		cfg.LogLevel = "info"
+	}
+
+	if cfg.JwtExpirySeconds == 0 {
+		// Default to 24 hours
+		cfg.JwtExpirySeconds = 24 * 60 * 60
+	}
+	if cfg.JwtRefreshExpirySeconds == 0 {
+		// Default refresh token expiry: 7 days
+		cfg.JwtRefreshExpirySeconds = 7 * 24 * 60 * 60
 	}
 
 	if cfg.UploadTmpDir == "" || cfg.UploadDir == "" {
@@ -159,6 +174,13 @@ func readConfigFile(path string, cfg *config) error {
 			cfg.AuthMethod = value
 		case "navidrome_url":
 			cfg.NavidromeURL = value
+		case "jwt_signing_key":
+			cfg.JwtSigningKey = value
+		case "jwt_expiry_seconds":
+			// ignore parse error; zero means default
+			fmt.Sscanf(value, "%d", &cfg.JwtExpirySeconds)
+		case "jwt_refresh_expiry_seconds":
+			fmt.Sscanf(value, "%d", &cfg.JwtRefreshExpirySeconds)
 		case "log_level":
 			cfg.LogLevel = value
 		case "root_path":
