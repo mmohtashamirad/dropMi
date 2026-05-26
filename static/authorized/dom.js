@@ -1,32 +1,44 @@
-export const elements = {
-  audioPlayer: document.getElementById("audio-player"),
-  browseButton: document.getElementById("browse-button"),
-  cancelResultButton: document.getElementById("cancel-result-button"),
-  cancelUploadButton: document.getElementById("cancel-upload-button"),
-  dropScreen: document.getElementById("drop-screen"),
-  dropSubtext: document.getElementById("drop-subtext"),
-  dropTitle: document.getElementById("drop-title"),
-  dropZone: document.getElementById("drop-zone"),
-  duplicateNotice: document.getElementById("duplicate-notice"),
-  fileInput: document.getElementById("file-input"),
-  findLyricsButton: document.getElementById("find-lyrics-button"),
-  reshazamButton: document.getElementById("reshazam-button"),
-  lyricsSearchInput: document.getElementById("lyrics-search-input"),
-  lyricsOptions: document.getElementById("lyrics-options"),
-  lyricsSection: document.getElementById("lyrics-section"),
-  logoutButton: document.getElementById("logout-button"),
-  okButton: document.getElementById("ok-button"),
-  progressFill: document.getElementById("progress-fill"),
-  progressLabel: document.getElementById("progress-label"),
-  resultErrorTemplate: document.getElementById("result-error-template"),
-  resultFileName: document.getElementById("result-file-name"),
-  resultScreen: document.getElementById("result-screen"),
-  resultTableBody: document.getElementById("result-table-body"),
-  sessionBar: document.getElementById("session-bar"),
-  sessionUser: document.getElementById("session-user"),
-  themeToggleButton: document.getElementById("theme-toggle-button"),
-  uploadFileName: document.getElementById("upload-file-name"),
-  uploadQueueStatus: document.getElementById("upload-queue-status"),
-  resultQueueStatus: document.getElementById("result-queue-status"),
-  uploadScreen: document.getElementById("upload-screen")
+const elementIds = {
+  audioPlayer: "audio-player",
+  browseButton: "browse-button",
+  cancelResultButton: "cancel-result-button",
+  cancelUploadButton: "cancel-upload-button",
+  dropScreen: "drop-screen",
+  dropSubtext: "drop-subtext",
+  dropTitle: "drop-title",
+  dropZone: "drop-zone",
+  duplicateNotice: "duplicate-notice",
+  fileInput: "file-input",
+  findLyricsButton: "find-lyrics-button",
+  reshazamButton: "reshazam-button",
+  lyricsSearchInput: "lyrics-search-input",
+  lyricsOptions: "lyrics-options",
+  lyricsSection: "lyrics-section",
+  logoutButton: "logout-button",
+  okButton: "ok-button",
+  panel: "tab-panel",
+  progressFill: "progress-fill",
+  progressLabel: "progress-label",
+  resultErrorTemplate: "result-error-template",
+  resultFileName: "result-file-name",
+  resultScreen: "result-screen",
+  resultTableBody: "result-table-body",
+  sessionBar: "session-bar",
+  sessionUser: "session-user",
+  themeToggleButton: "theme-toggle-button",
+  uploadFileName: "upload-file-name",
+  uploadQueueStatus: "upload-queue-status",
+  resultQueueStatus: "result-queue-status",
+  uploadScreen: "upload-screen"
 };
+
+export const elements = {};
+
+export function refreshElements() {
+  Object.entries(elementIds).forEach(([key, id]) => {
+    elements[key] = document.getElementById(id);
+  });
+  return elements;
+}
+
+refreshElements();

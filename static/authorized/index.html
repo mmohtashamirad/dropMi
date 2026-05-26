@@ -14,72 +14,7 @@
         <button class="toolbar-button" id="logout-button" type="button">Log out</button>
       </div>
 
-      <section class="panel">
-        <div class="screen screen-active" id="drop-screen">
-          <div class="drop-zone" id="drop-zone">
-            <p class="eyebrow">SonDrop</p>
-            <h1 id="drop-title">Drop your MP3 files here</h1>
-            <p class="subtext" id="drop-subtext">Drag and drop one or more MP3 files to begin.</p>
-            <button class="secondary-button" id="browse-button" type="button">Choose files</button>
-            <input class="file-input" id="file-input" type="file" accept=".mp3,audio/mpeg" multiple />
-          </div>
-        </div>
-
-        <div class="screen" id="upload-screen">
-          <p class="eyebrow">Uploading</p>
-          <h1 class="screen-title">Sending your file</h1>
-          <p class="queue-status" id="upload-queue-status" hidden></p>
-          <p class="subtext" id="upload-file-name">Preparing upload...</p>
-          <div class="progress-track" aria-hidden="true">
-            <div class="progress-fill" id="progress-fill"></div>
-          </div>
-          <p class="progress-label" id="progress-label">0%</p>
-          <button class="secondary-button" id="cancel-upload-button" type="button">Cancel upload</button>
-        </div>
-
-        <div class="screen" id="result-screen">
-          <h1 class="screen-title">Analysis complete</h1>
-          <p class="queue-status" id="result-queue-status" hidden></p>
-          <p class="subtext" id="result-file-name"></p>
-          <div class="result-table-wrap">
-            <table class="result-table">
-              <thead>
-                <tr>
-                  <th>Tag</th>
-                  <th>eyeD3</th>
-                  <th>songrec</th>
-                  <th>Selected</th>
-                </tr>
-              </thead>
-              <tbody id="result-table-body"></tbody>
-            </table>
-          </div>
-          <div class="duplicate-notice" id="duplicate-notice" hidden></div>
-          <div class="action-row">
-            <button class="secondary-button" id="cancel-result-button" type="button">Cancel</button>
-            <button class="secondary-button" id="reshazam-button" type="button">Re-shazam</button>
-            <button class="primary-button" id="ok-button" type="button">OK</button>
-          </div>
-          <audio class="audio-player" id="audio-player" controls preload="metadata"></audio>
-          <div class="lyrics-search-row">
-            <input
-              class="lyrics-search-input"
-              id="lyrics-search-input"
-              type="text"
-              placeholder="Search lyrics"
-              autocomplete="off"
-            />
-            <button class="secondary-button" id="find-lyrics-button" type="button">Find lyrics</button>
-          </div>
-          <section class="lyrics-section" id="lyrics-section" hidden>
-            <div class="lyrics-section-header">
-              <p class="eyebrow">Lyrics</p>
-              <h2 class="lyrics-title">LRCLIB Options</h2>
-            </div>
-            <div class="lyrics-options" id="lyrics-options"></div>
-          </section>
-        </div>
-      </section>
+      <section class="panel" id="tab-panel" aria-live="polite"></section>
     </main>
 
     <template id="result-error-template">
