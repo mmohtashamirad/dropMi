@@ -2,12 +2,15 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
 	"database/sql"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -17,12 +20,19 @@ type songStore struct {
 }
 
 type songRecord struct {
-	Path        string
-	FileName    string
-	Fingerprint string
-	Duration    float64
-	FileSize    int64
-	ModTime     string
+	Path            string
+	FileName        string
+	Fingerprint     string
+	FingerprintHash string
+	Duration        float64
+	Artist          string
+	TrackName       string
+	Album           string
+	Genre           string
+	Comment         string
+	Language        string
+	FileSize        int64
+	ModTime         string
 }
 
 func newSongStore(db *sql.DB, uploadDir string) (*songStore, error) {
@@ -43,7 +53,14 @@ func (s *songStore) ensureSchema() error {
 			path TEXT PRIMARY KEY,
 			file_name TEXT NOT NULL,
 			fingerprint TEXT NOT NULL,
+			fingerprint_hash TEXT NOT NULL DEFAULT '',
 			duration REAL NOT NULL DEFAULT 0,
+			artist TEXT NOT NULL DEFAULT '',
+			track_name TEXT NOT NULL DEFAULT '',
+			album TEXT NOT NULL DEFAULT '',
+			genre TEXT NOT NULL DEFAULT '',
+			comment TEXT NOT NULL DEFAULT '',
+			language TEXT NOT NULL DEFAULT '',
 			file_size INTEGER NOT NULL DEFAULT 0,
 			mod_time TEXT NOT NULL,
 			updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -54,15 +71,70 @@ func (s *songStore) ensureSchema() error {
 		return fmt.Errorf("ensure songs schema: %w", err)
 	}
 
-	const fingerprintIndexQuery = `
-		CREATE INDEX IF NOT EXISTS songs_fingerprint_idx
-		ON songs (fingerprint);
-	`
-
-	if _, err := s.db.Exec(fingerprintIndexQuery); err != nil {
-		return fmt.Errorf("ensure songs fingerprint index: %w", err)
+	columns := map[string]string{
+		"fingerprint_hash": "TEXT NOT NULL DEFAULT ''",
+		"artist":           "TEXT NOT NULL DEFAULT ''",
+		"track_name":       "TEXT NOT NULL DEFAULT ''",
+		"album":            "TEXT NOT NULL DEFAULT ''",
+		"genre":            "TEXT NOT NULL DEFAULT ''",
+		"comment":          "TEXT NOT NULL DEFAULT ''",
+		"language":         "TEXT NOT NULL DEFAULT ''",
+	}
+	for column, definition := range columns {
+		if err := s.ensureColumn(column, definition); err != nil {
+			return err
+		}
 	}
 
+	if _, err := s.db.Exec(`UPDATE songs SET fingerprint_hash = '' WHERE fingerprint_hash IS NULL`); err != nil {
+		return fmt.Errorf("normalize song fingerprint hashes: %w", err)
+	}
+	if _, err := s.db.Exec(`UPDATE songs SET fingerprint_hash = lower(hex(sha3(fingerprint, 256))) WHERE fingerprint_hash = '' AND fingerprint != ''`); err != nil {
+		// modernc sqlite may not expose sha3 in every build; upsert refresh will fill hashes.
+		Debugf("skip SQL fingerprint hash backfill: %v", err)
+	}
+
+	indexes := []string{
+		`CREATE INDEX IF NOT EXISTS songs_fingerprint_idx ON songs (fingerprint);`,
+		`CREATE INDEX IF NOT EXISTS songs_fingerprint_hash_idx ON songs (fingerprint_hash);`,
+		`CREATE INDEX IF NOT EXISTS songs_artist_track_idx ON songs (artist, track_name);`,
+	}
+	for _, query := range indexes {
+		if _, err := s.db.Exec(query); err != nil {
+			return fmt.Errorf("ensure songs index: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func (s *songStore) ensureColumn(column string, definition string) error {
+	rows, err := s.db.Query(`PRAGMA table_info(songs)`)
+	if err != nil {
+		return fmt.Errorf("inspect songs schema: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var cid int
+		var name, columnType string
+		var notNull int
+		var defaultValue any
+		var pk int
+		if err := rows.Scan(&cid, &name, &columnType, &notNull, &defaultValue, &pk); err != nil {
+			return fmt.Errorf("scan songs schema: %w", err)
+		}
+		if name == column {
+			return nil
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("iterate songs schema: %w", err)
+	}
+
+	if _, err := s.db.Exec(fmt.Sprintf("ALTER TABLE songs ADD COLUMN %s %s", column, definition)); err != nil {
+		return fmt.Errorf("add songs.%s column: %w", column, err)
+	}
 	return nil
 }
 
@@ -95,7 +167,7 @@ func (s *songStore) refresh(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		if ok && existing.FileSize == info.Size() && existing.ModTime == formatSongModTime(info.ModTime()) {
+		if ok && existing.FileSize == info.Size() && existing.ModTime == formatSongModTime(info.ModTime()) && existing.FingerprintHash != "" {
 			return nil
 		}
 
@@ -121,9 +193,12 @@ func (s *songStore) upsertFromFile(ctx context.Context, path string) error {
 		return nil
 	}
 
-	fingerprint, _, err := runFPCalc(ctx, path)
+	indexData, _, err := runSongDupRecord(ctx, path)
 	if err != nil {
-		return fmt.Errorf("fingerprint song: %w", err)
+		return fmt.Errorf("index song: %w", err)
+	}
+	if indexData.FingerprintHash == "" {
+		indexData.FingerprintHash = fingerprintHash(indexData.Fingerprint)
 	}
 
 	absolutePath, err := filepath.Abs(path)
@@ -137,24 +212,45 @@ func (s *songStore) upsertFromFile(ctx context.Context, path string) error {
 				path,
 				file_name,
 				fingerprint,
+				fingerprint_hash,
 				duration,
+				artist,
+				track_name,
+				album,
+				genre,
+				comment,
+				language,
 				file_size,
 				mod_time,
 				updated_at
 			)
-			VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
 			ON CONFLICT(path) DO UPDATE SET
 				file_name = excluded.file_name,
 				fingerprint = excluded.fingerprint,
+				fingerprint_hash = excluded.fingerprint_hash,
 				duration = excluded.duration,
+				artist = excluded.artist,
+				track_name = excluded.track_name,
+				album = excluded.album,
+				genre = excluded.genre,
+				comment = excluded.comment,
+				language = excluded.language,
 				file_size = excluded.file_size,
 				mod_time = excluded.mod_time,
 				updated_at = CURRENT_TIMESTAMP
 		`,
 		absolutePath,
 		filepath.Base(absolutePath),
-		fingerprint.Fingerprint,
-		fingerprint.Duration,
+		indexData.Fingerprint,
+		indexData.FingerprintHash,
+		indexData.Duration,
+		strings.TrimSpace(indexData.Artist),
+		strings.TrimSpace(indexData.TrackName),
+		strings.TrimSpace(indexData.Album),
+		strings.TrimSpace(indexData.Genre),
+		strings.TrimSpace(indexData.Comment),
+		strings.TrimSpace(indexData.Language),
 		info.Size(),
 		formatSongModTime(info.ModTime()),
 	); err != nil {
@@ -165,25 +261,34 @@ func (s *songStore) upsertFromFile(ctx context.Context, path string) error {
 }
 
 func (s *songStore) findDuplicate(fingerprint string) (*songRecord, float64, error) {
+	fingerprint = strings.TrimSpace(fingerprint)
 	if fingerprint == "" {
 		return nil, 0, nil
 	}
 
+	fingerprintHash := fingerprintHash(fingerprint)
 	var record songRecord
 	err := s.db.QueryRow(
 		`
-			SELECT path, file_name, fingerprint, duration, file_size, mod_time
+			SELECT path, file_name, fingerprint, fingerprint_hash, duration, artist, track_name, album, genre, comment, language, file_size, mod_time
 			FROM songs
-			WHERE fingerprint = ?
+			WHERE fingerprint_hash = ?
 			ORDER BY updated_at DESC
 			LIMIT 1
 		`,
-		fingerprint,
+		fingerprintHash,
 	).Scan(
 		&record.Path,
 		&record.FileName,
 		&record.Fingerprint,
+		&record.FingerprintHash,
 		&record.Duration,
+		&record.Artist,
+		&record.TrackName,
+		&record.Album,
+		&record.Genre,
+		&record.Comment,
+		&record.Language,
 		&record.FileSize,
 		&record.ModTime,
 	)
@@ -201,7 +306,7 @@ func (s *songStore) findByPath(path string) (songRecord, bool, error) {
 	var record songRecord
 	err := s.db.QueryRow(
 		`
-			SELECT path, file_name, fingerprint, duration, file_size, mod_time
+			SELECT path, file_name, fingerprint, fingerprint_hash, duration, artist, track_name, album, genre, comment, language, file_size, mod_time
 			FROM songs
 			WHERE path = ?
 		`,
@@ -210,7 +315,14 @@ func (s *songStore) findByPath(path string) (songRecord, bool, error) {
 		&record.Path,
 		&record.FileName,
 		&record.Fingerprint,
+		&record.FingerprintHash,
 		&record.Duration,
+		&record.Artist,
+		&record.TrackName,
+		&record.Album,
+		&record.Genre,
+		&record.Comment,
+		&record.Language,
 		&record.FileSize,
 		&record.ModTime,
 	)
@@ -252,6 +364,11 @@ func (s *songStore) deleteMissing(seen map[string]bool) error {
 	}
 
 	return nil
+}
+
+func fingerprintHash(fingerprint string) string {
+	sum := sha256.Sum256([]byte(fingerprint))
+	return hex.EncodeToString(sum[:])
 }
 
 func formatSongModTime(modTime time.Time) string {

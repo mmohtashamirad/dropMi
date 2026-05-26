@@ -132,6 +132,46 @@ type audioFingerprint struct {
 	Fingerprint string
 }
 
+type songIndexData struct {
+	Duration        float64 `json:"duration"`
+	Fingerprint     string  `json:"fingerprint"`
+	FingerprintHash string  `json:"fingerprint_hash"`
+	Artist          string  `json:"artist"`
+	TrackName       string  `json:"track_name"`
+	Album           string  `json:"album"`
+	Genre           string  `json:"genre"`
+	Comment         string  `json:"comment"`
+	Language        string  `json:"language"`
+}
+
+func runSongDupRecord(parent context.Context, filePath string) (songIndexData, string, error) {
+	output, err := runMusicToolsCommand(
+		parent,
+		filePath,
+		"songdup-record",
+	)
+	if err != nil {
+		return songIndexData{}, output, err
+	}
+
+	var parsed songIndexData
+	jsonOutput := strings.TrimSpace(output)
+	for _, line := range strings.Split(jsonOutput, "\n") {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "{") && strings.HasSuffix(line, "}") {
+			jsonOutput = line
+		}
+	}
+	if err := json.Unmarshal([]byte(jsonOutput), &parsed); err != nil {
+		return songIndexData{}, output, fmt.Errorf("parse songdup-record output: %w", err)
+	}
+	if parsed.Fingerprint == "" {
+		return songIndexData{}, output, fmt.Errorf("songdup-record returned an empty fingerprint")
+	}
+
+	return parsed, output, nil
+}
+
 func runFPCalc(parent context.Context, filePath string) (audioFingerprint, string, error) {
 	output, err := runMusicToolsCommand(
 		parent,

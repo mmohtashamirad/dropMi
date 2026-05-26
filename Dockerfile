@@ -21,6 +21,9 @@ RUN wget -qO- 'http://keyserver.ubuntu.com/pks/lookup?op=get&search=0x6888550b2f
 
 RUN pip3 install --break-system-packages eyeD3 lrcup
 
+COPY scripts/music-tools/songdup-record /usr/local/bin/songdup-record
+RUN chmod +x /usr/local/bin/songdup-record
+
 WORKDIR /songs
 
 CMD ["/bin/bash"]

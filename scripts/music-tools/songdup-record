@@ -1,0 +1,137 @@
+#!/usr/bin/env python3
+import argparse
+import hashlib
+import json
+import subprocess
+import sys
+
+
+def run_command(args):
+    completed = subprocess.run(args, capture_output=True, text=True)
+    output = (completed.stdout or "") + (completed.stderr or "")
+    if completed.returncode != 0:
+        raise RuntimeError(output.strip() or f"command failed: {' '.join(args)}")
+    return completed.stdout
+
+
+def first_text(*values):
+    for value in values:
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return ""
+
+
+def parse_comment(value):
+    if isinstance(value, str):
+        return value.strip()
+    if isinstance(value, list):
+        for item in value:
+            if isinstance(item, str) and item.strip():
+                return item.strip()
+            if isinstance(item, dict):
+                text = first_text(item.get("text"), item.get("comment"), item.get("description"))
+                if text:
+                    return text
+    if isinstance(value, dict):
+        return first_text(value.get("text"), value.get("comment"), value.get("description"))
+    return ""
+
+
+def parse_genre(value):
+    if isinstance(value, str):
+        return value.strip()
+    if isinstance(value, dict):
+        return first_text(value.get("name"), value.get("text"), value.get("genre"))
+    if isinstance(value, list):
+        names = []
+        for item in value:
+            if isinstance(item, str) and item.strip():
+                names.append(item.strip())
+            elif isinstance(item, dict):
+                name = first_text(item.get("name"), item.get("text"), item.get("genre"))
+                if name:
+                    names.append(name)
+        return ", ".join(names)
+    return ""
+
+
+def parse_language(parsed):
+    language = parsed.get("language")
+    if isinstance(language, str) and language.strip():
+        return language.strip()
+
+    languages = parsed.get("languages")
+    if isinstance(languages, str):
+        return languages.strip()
+    if isinstance(languages, list):
+        return ", ".join(str(item).strip() for item in languages if str(item).strip())
+
+    text_frames = parsed.get("text_frames")
+    if isinstance(text_frames, dict):
+        value = text_frames.get("TLAN") or text_frames.get("Language")
+        if isinstance(value, str):
+            return value.strip()
+        if isinstance(value, list):
+            return ", ".join(str(item).strip() for item in value if str(item).strip())
+
+    return ""
+
+
+def find_tag_root(value):
+    if isinstance(value, dict):
+        for key in ("tag", "tags", "metadata"):
+            if isinstance(value.get(key), dict):
+                return value[key]
+        return value
+    if isinstance(value, list) and value:
+        return find_tag_root(value[0])
+    return {}
+
+
+def read_tags(path):
+    try:
+        output = run_command(["eyeD3", "--plugin", "json", "--no-color", "--no-config", path])
+        parsed = json.loads(output)
+    except Exception:
+        return {}
+
+    tag = find_tag_root(parsed)
+    return {
+        "artist": first_text(tag.get("artist"), tag.get("album_artist")),
+        "track_name": first_text(tag.get("title"), tag.get("track_name")),
+        "album": first_text(tag.get("album")),
+        "genre": parse_genre(tag.get("genre")),
+        "comment": parse_comment(tag.get("comment") or tag.get("comments")),
+        "language": parse_language(tag),
+    }
+
+
+def read_fingerprint(path):
+    output = run_command(["fpcalc", "-json", path])
+    parsed = json.loads(output)
+    fingerprint = str(parsed.get("fingerprint") or "").strip()
+    if not fingerprint:
+        raise RuntimeError("fpcalc returned an empty fingerprint")
+    return {
+        "duration": float(parsed.get("duration") or 0),
+        "fingerprint": fingerprint,
+        "fingerprint_hash": hashlib.sha256(fingerprint.encode("utf-8")).hexdigest(),
+    }
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Emit SonDrop duplicate-check metadata for one audio file.")
+    parser.add_argument("path")
+    args = parser.parse_args()
+
+    record = read_fingerprint(args.path)
+    record.update(read_tags(args.path))
+    print(json.dumps(record, ensure_ascii=False, sort_keys=True))
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except Exception as exc:
+        print(str(exc), file=sys.stderr)
+        sys.exit(1)
