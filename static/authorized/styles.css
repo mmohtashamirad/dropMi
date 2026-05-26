@@ -22,6 +22,7 @@
   --editable-bg: rgba(255, 255, 255, 0.06);
   --editable-border: rgba(215, 202, 183, 0.25);
   --body-glow: rgba(255, 255, 255, 0.08);
+  --library-surface: rgba(255, 255, 255, 0.08);
 }
 
 body[data-theme="light"] {
@@ -48,6 +49,7 @@ body[data-theme="light"] {
   --editable-bg: rgba(255, 255, 255, 0.06);
   --editable-border: rgba(215, 202, 183, 0.25);
   --body-glow: rgba(255, 255, 255, 0.7);
+  --library-surface: #f1f3f5;
 }
 
 * {
@@ -388,6 +390,103 @@ h1 {
   overflow-x: auto;
 }
 
+.library-view {
+  display: block;
+  width: 100%;
+  text-align: left;
+}
+
+.library-header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 22px;
+}
+
+.library-title {
+  margin: 8px 0 0;
+  font-size: 2.4rem;
+  line-height: 1.05;
+}
+
+.library-count {
+  flex: 0 0 auto;
+  border: 1px solid var(--panel-border);
+  border-radius: 999px;
+  padding: 9px 14px;
+  background: var(--library-surface);
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.library-state {
+  border: 1px solid var(--panel-border);
+  border-radius: 16px;
+  padding: 18px;
+  background: var(--library-surface);
+  color: var(--muted);
+  text-align: center;
+}
+
+.library-state[hidden],
+.library-table-wrap[hidden] {
+  display: none;
+}
+
+.library-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--panel-border);
+  border-radius: 18px;
+  background: var(--library-surface);
+}
+
+.library-table {
+  width: 100%;
+  min-width: 980px;
+  border-collapse: collapse;
+  color: var(--text);
+}
+
+.library-table th,
+.library-table td {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--panel-border);
+  vertical-align: top;
+}
+
+.library-table th {
+  position: sticky;
+  top: 0;
+  background: var(--library-surface);
+  color: var(--muted);
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-align: left;
+}
+
+.library-table tr:last-child td {
+  border-bottom: 0;
+}
+
+.library-track-title,
+.library-file-name {
+  font-weight: 800;
+}
+
+.library-track-meta {
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.35;
+}
+
+.library-duration {
+  font-variant-numeric: tabular-nums;
+}
+
 .duplicate-notice {
   width: min(760px, 100%);
   margin-top: 18px;
@@ -651,6 +750,15 @@ h1 {
   .drop-zone {
     min-height: 260px;
     padding: 36px 24px;
+  }
+
+  .library-header {
+    align-items: start;
+    flex-direction: column;
+  }
+
+  .library-title {
+    font-size: 2rem;
   }
 
   .result-table th,

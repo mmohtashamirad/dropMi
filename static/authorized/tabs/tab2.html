@@ -1,4 +1,28 @@
-        <div class="screen screen-active">
-          <p class="eyebrow">SonDrop</p>
-          <h1 class="screen-title">Tab2</h1>
+        <div class="library-view screen screen-active">
+          <div class="library-header">
+            <div>
+              <p class="eyebrow">SonDrop</p>
+              <h1 class="library-title">Music Library</h1>
+            </div>
+            <div class="library-count" id="library-count">Loading...</div>
+          </div>
+
+          <div class="library-state" id="library-state" hidden></div>
+
+          <div class="library-table-wrap" id="library-table-wrap" hidden>
+            <table class="library-table">
+              <thead>
+                <tr>
+                  <th>Track</th>
+                  <th>Artist</th>
+                  <th>Album</th>
+                  <th>Genre</th>
+                  <th>Language</th>
+                  <th>Duration</th>
+                  <th>File</th>
+                </tr>
+              </thead>
+              <tbody id="library-table-body"></tbody>
+            </table>
+          </div>
         </div>
