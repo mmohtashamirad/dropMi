@@ -66,9 +66,12 @@ body {
 
 .page-shell {
   min-height: 100vh;
-  display: grid;
-  place-items: center;
-  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 84px 24px 24px;
   position: relative;
 }
 
@@ -94,6 +97,59 @@ body {
   color: var(--muted);
   font-size: 0.95rem;
   font-weight: 700;
+}
+
+.tab-list {
+  position: fixed;
+  top: 20px;
+  left: 24px;
+  max-width: min(720px, calc(100vw - 48px));
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  overflow-x: auto;
+  padding: 10px;
+  border-radius: 999px;
+  background: var(--session-bg);
+  box-shadow: 0 12px 28px rgba(42, 59, 71, 0.12);
+  z-index: 10;
+}
+
+.tab-list[hidden] {
+  display: none;
+}
+
+.tab-button {
+  flex: 0 0 auto;
+  min-width: 64px;
+  min-height: 36px;
+  border: 0;
+  border-radius: 999px;
+  padding: 7px 12px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 700;
+  text-align: center;
+  cursor: pointer;
+  transition:
+    background-color 150ms ease,
+    color 150ms ease;
+}
+
+.tab-button:hover,
+.tab-button-active {
+  color: var(--text);
+}
+
+.tab-button-active {
+  background: var(--secondary-bg);
+}
+
+.tab-button:disabled {
+  opacity: 0.7;
+  cursor: wait;
 }
 
 .panel {
@@ -340,7 +396,7 @@ h1 {
   border-radius: 16px;
   background: rgba(224, 154, 98, 0.1);
   color: var(--text);
-  text-align: left;
+  text-align: center;
 }
 
 .duplicate-notice[hidden] {
@@ -369,7 +425,7 @@ h1 {
 .lyrics-section {
   width: 100%;
   margin-top: 24px;
-  text-align: left;
+  text-align: center;
 }
 
 .lyrics-section-header {
@@ -485,7 +541,7 @@ h1 {
 .result-table th,
 .result-table td {
   padding: 16px 18px;
-  text-align: left;
+  text-align: center;
   vertical-align: top;
   border-bottom: 1px solid var(--table-border);
 }
@@ -545,7 +601,7 @@ h1 {
   border-radius: 16px;
   background: rgba(157, 68, 57, 0.1);
   color: var(--danger);
-  text-align: left;
+  text-align: center;
 }
 
 .result-error-close {
@@ -569,11 +625,26 @@ h1 {
 }
 
 @media (max-width: 640px) {
+  .page-shell {
+    justify-content: start;
+    padding-top: 132px;
+  }
+
   .session-bar {
     top: 14px;
     right: 14px;
     left: 14px;
     justify-content: space-between;
+  }
+
+  .tab-list {
+    top: 72px;
+    right: 14px;
+    left: 14px;
+    max-width: none;
+    max-height: none;
+    align-items: center;
+    overflow-x: auto;
   }
 
   .panel,

@@ -3,6 +3,9 @@ import { checkSession, logout } from "/authorized/auth-client.js";
 import { hideSessionBar, showSessionBar } from "/authorized/auth-ui.js";
 
 const themeStorageKey = "sondrop-theme";
+let activeTabController = null;
+let activeTabKey = "";
+let availableTabs = [];
 
 initializeTheme();
 bindShellEvents();
@@ -13,8 +16,6 @@ function bindShellEvents() {
   elements.themeToggleButton.addEventListener("click", toggleTheme);
 }
 
-let activeTabController = null;
-
 async function handleLogout() {
   if (activeTabController?.beforeLogout) {
     activeTabController.beforeLogout();
@@ -23,6 +24,7 @@ async function handleLogout() {
   await logout();
 
   activeTabController = null;
+  activeTabKey = "";
   hideSessionBar();
   window.location.assign("/");
 }
@@ -36,15 +38,70 @@ async function initializeApp() {
 
   showSessionBar(session.username);
 
-  const tabLoaded = await loadTab("drop");
-  if (!tabLoaded) {
+  availableTabs = await fetchUserTabs();
+  if (availableTabs.length === 0) {
+    showTabLoadError();
     return;
+  }
+
+  renderTabs(availableTabs);
+  const firstTab = availableTabs.find((tab) => tab.key === "drop") || availableTabs[0];
+  await loadTab(firstTab.key);
+}
+
+async function fetchUserTabs() {
+  try {
+    const response = await fetch("/user-tabs");
+    if (!response.ok) {
+      return [];
+    }
+
+    const payload = await response.json().catch(() => null);
+    return Array.isArray(payload?.tabs) ? payload.tabs : [];
+  } catch {
+    return [];
   }
 }
 
+function renderTabs(tabs) {
+  elements.tabList.replaceChildren();
+
+  tabs.forEach((tab) => {
+    const button = document.createElement("button");
+    button.className = "tab-button";
+    button.type = "button";
+    button.textContent = tab.title || tab.key;
+    button.dataset.tabKey = tab.key;
+    button.setAttribute("role", "tab");
+    button.setAttribute("aria-selected", "false");
+    button.addEventListener("click", () => {
+      loadTab(tab.key);
+    });
+    elements.tabList.appendChild(button);
+  });
+
+  elements.tabList.hidden = false;
+}
+
 async function loadTab(tabKey) {
+  if (tabKey === activeTabKey) {
+    return true;
+  }
+
+  const tab = availableTabs.find((item) => item.key === tabKey);
+  if (!tab) {
+    showTabLoadError();
+    return false;
+  }
+
+  setTabsDisabled(true);
+
   try {
-    const response = await fetch(`/tab-content?tab=${encodeURIComponent(tabKey)}`);
+    if (activeTabController?.beforeLeave) {
+      activeTabController.beforeLeave();
+    }
+
+    const response = await fetch(`/tab-content?tab=${encodeURIComponent(tab.key)}`);
     if (!response.ok) {
       showTabLoadError();
       return false;
@@ -53,22 +110,36 @@ async function loadTab(tabKey) {
     elements.panel.innerHTML = await response.text();
     refreshElements();
 
-    const tabModule = await importTabModule(tabKey);
-    activeTabController = tabModule.initTab();
+    const tabModule = await importTabModule(tab);
+    activeTabController = tabModule.initTab?.() || null;
+    activeTabKey = tab.key;
+    updateActiveTab();
     return true;
   } catch {
     showTabLoadError();
     return false;
+  } finally {
+    setTabsDisabled(false);
   }
 }
 
-function importTabModule(tabKey) {
-  switch (tabKey) {
-    case "drop":
-      return import("/authorized/tabs/drop.js");
-    default:
-      throw new Error(`Unknown tab module: ${tabKey}`);
-  }
+function importTabModule(tab) {
+  const basePath = tab.adminOnly ? "/admin/tabs" : "/authorized/tabs";
+  return import(`${basePath}/${tab.key}.js`);
+}
+
+function updateActiveTab() {
+  elements.tabList.querySelectorAll(".tab-button").forEach((button) => {
+    const isActive = button.dataset.tabKey === activeTabKey;
+    button.classList.toggle("tab-button-active", isActive);
+    button.setAttribute("aria-selected", isActive ? "true" : "false");
+  });
+}
+
+function setTabsDisabled(isDisabled) {
+  elements.tabList.querySelectorAll(".tab-button").forEach((button) => {
+    button.disabled = isDisabled;
+  });
 }
 
 function showTabLoadError() {
@@ -97,4 +168,3 @@ function applyTheme(theme) {
   document.body.dataset.theme = theme;
   elements.themeToggleButton.textContent = theme === "dark" ? "Light" : "Dark";
 }
-

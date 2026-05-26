@@ -25,6 +25,7 @@ const elementIds = {
   resultTableBody: "result-table-body",
   sessionBar: "session-bar",
   sessionUser: "session-user",
+  tabList: "user-tabs",
   themeToggleButton: "theme-toggle-button",
   uploadFileName: "upload-file-name",
   uploadQueueStatus: "upload-queue-status",

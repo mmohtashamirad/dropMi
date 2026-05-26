@@ -192,17 +192,20 @@ export function initTab() {
   showScreen(elements.dropScreen);
 
   return {
-    beforeLogout() {
-      if (activeUpload) {
-        activeUpload.abort();
-      }
-      clearQueue();
-      clearAudioPlayer();
-      activeUpload = null;
-      currentUploadId = "";
-      dragDepth = 0;
-    }
+    beforeLeave: cleanupTab,
+    beforeLogout: cleanupTab
   };
+}
+
+function cleanupTab() {
+  if (activeUpload) {
+    activeUpload.abort();
+  }
+  clearQueue();
+  clearAudioPlayer();
+  activeUpload = null;
+  currentUploadId = "";
+  dragDepth = 0;
 }
 
 function enqueueFiles(fileList) {
