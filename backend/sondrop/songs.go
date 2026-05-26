@@ -260,6 +260,46 @@ func (s *songStore) upsertFromFile(ctx context.Context, path string) error {
 	return nil
 }
 
+func (s *songStore) listSongs() ([]librarySong, error) {
+	rows, err := s.db.Query(
+		`
+			SELECT path, file_name, duration, artist, track_name, album, genre, comment, language, file_size, updated_at
+			FROM songs
+			ORDER BY lower(artist), lower(album), lower(track_name), lower(file_name)
+		`,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("list library songs: %w", err)
+	}
+	defer rows.Close()
+
+	songs := make([]librarySong, 0)
+	for rows.Next() {
+		var song librarySong
+		if err := rows.Scan(
+			&song.Path,
+			&song.FileName,
+			&song.Duration,
+			&song.Artist,
+			&song.TrackName,
+			&song.Album,
+			&song.Genre,
+			&song.Comment,
+			&song.Language,
+			&song.FileSize,
+			&song.UpdatedTime,
+		); err != nil {
+			return nil, fmt.Errorf("scan library song: %w", err)
+		}
+		songs = append(songs, song)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate library songs: %w", err)
+	}
+
+	return songs, nil
+}
+
 func (s *songStore) findDuplicate(fingerprint string) (*songRecord, float64, error) {
 	fingerprint = strings.TrimSpace(fingerprint)
 	if fingerprint == "" {

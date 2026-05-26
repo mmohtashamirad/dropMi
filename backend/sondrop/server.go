@@ -48,6 +48,7 @@ func (s *server) routes() http.Handler {
 	mux.HandleFunc("/session", s.handleSession)
 	mux.HandleFunc("/user-tabs", s.handleUserTabs)
 	mux.HandleFunc("/tab-content", s.handleTabContent)
+	mux.HandleFunc("/library-songs", s.handleLibrarySongs)
 	mux.HandleFunc("/refresh", s.handleRefresh)
 	mux.HandleFunc("/logout", s.handleLogout)
 	mux.HandleFunc("/upload", s.handleUpload)
@@ -105,6 +106,30 @@ func (s *server) handleUserTabs(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, userTabsResponse{Tabs: tabs})
+}
+
+func (s *server) handleLibrarySongs(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.Header().Set("Allow", http.MethodGet)
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	if _, _, ok := s.authenticatedUser(r); !ok {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	songs, err := s.songs.listSongs()
+	if err != nil {
+		Errorf("list library songs: %v", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{
+			"error": "Unable to load the music library.",
+		})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, librarySongsResponse{Songs: songs})
 }
 
 func (s *server) handleTabContent(w http.ResponseWriter, r *http.Request) {

@@ -51,6 +51,24 @@ type userTabsResponse struct {
 	Tabs []tabItem `json:"tabs"`
 }
 
+type librarySong struct {
+	Path        string  `json:"path"`
+	FileName    string  `json:"fileName"`
+	Duration    float64 `json:"duration"`
+	Artist      string  `json:"artist"`
+	TrackName   string  `json:"trackName"`
+	Album       string  `json:"album"`
+	Genre       string  `json:"genre"`
+	Comment     string  `json:"comment"`
+	Language    string  `json:"language"`
+	FileSize    int64   `json:"fileSize"`
+	UpdatedTime string  `json:"updatedTime"`
+}
+
+type librarySongsResponse struct {
+	Songs []librarySong `json:"songs"`
+}
+
 type confirmRequest struct {
 	UploadID         string            `json:"uploadId"`
 	SelectedMetadata map[string]string `json:"selectedMetadata,omitempty"`
