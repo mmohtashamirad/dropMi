@@ -9,6 +9,24 @@
 
           <div class="library-state" id="library-state" hidden></div>
 
+          <div class="library-pagination" id="library-pagination" hidden>
+            <button type="button" class="secondary-button" id="library-prev" disabled>Previous</button>
+            <span class="library-page-info">
+              Page
+              <input
+                type="number"
+                class="library-page-input"
+                id="library-page-input"
+                min="1"
+                step="1"
+                value="1"
+                inputmode="numeric"
+              />
+              of <span id="library-page-total">1</span>
+            </span>
+            <button type="button" class="secondary-button" id="library-next" disabled>Next</button>
+          </div>
+
           <div class="library-table-wrap" id="library-table-wrap" hidden>
             <table class="library-table">
               <thead>

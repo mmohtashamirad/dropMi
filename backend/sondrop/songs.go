@@ -260,20 +260,38 @@ func (s *songStore) upsertFromFile(ctx context.Context, path string) error {
 	return nil
 }
 
-func (s *songStore) listSongs() ([]librarySong, error) {
+func (s *songStore) listSongsPage(offset, limit int) ([]librarySong, int, error) {
+	if offset < 0 {
+		offset = 0
+	}
+	if limit < 0 {
+		limit = 0
+	}
+
+	var total int
+	if err := s.db.QueryRow(`SELECT COUNT(*) FROM songs`).Scan(&total); err != nil {
+		return nil, 0, fmt.Errorf("count library songs: %w", err)
+	}
+
+	songs := make([]librarySong, 0)
+	if limit == 0 {
+		return songs, total, nil
+	}
+
 	rows, err := s.db.Query(
 		`
 			SELECT path, file_name, duration, artist, track_name, album, genre, comment, language, file_size, updated_at
 			FROM songs
 			ORDER BY lower(artist), lower(album), lower(track_name), lower(file_name)
+			LIMIT ? OFFSET ?
 		`,
+		limit, offset,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("list library songs: %w", err)
+		return nil, 0, fmt.Errorf("list library songs: %w", err)
 	}
 	defer rows.Close()
 
-	songs := make([]librarySong, 0)
 	for rows.Next() {
 		var song librarySong
 		if err := rows.Scan(
@@ -289,15 +307,15 @@ func (s *songStore) listSongs() ([]librarySong, error) {
 			&song.FileSize,
 			&song.UpdatedTime,
 		); err != nil {
-			return nil, fmt.Errorf("scan library song: %w", err)
+			return nil, 0, fmt.Errorf("scan library song: %w", err)
 		}
 		songs = append(songs, song)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("iterate library songs: %w", err)
+		return nil, 0, fmt.Errorf("iterate library songs: %w", err)
 	}
 
-	return songs, nil
+	return songs, total, nil
 }
 
 func (s *songStore) findDuplicate(fingerprint string) (*songRecord, float64, error) {

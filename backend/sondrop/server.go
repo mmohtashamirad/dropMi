@@ -4,7 +4,10 @@ import (
 	"database/sql"
 	"net/http"
 	"os"
+	"strconv"
 )
+
+const librarySongsPageMaxLimit = 5
 
 type server struct {
 	uploadTmpDir         string
@@ -120,7 +123,16 @@ func (s *server) handleLibrarySongs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	songs, err := s.songs.listSongs()
+	offset := parseLibraryPageParam(r.URL.Query().Get("offset"), 0)
+	if offset < 0 {
+		offset = 0
+	}
+	limit := parseLibraryPageParam(r.URL.Query().Get("limit"), librarySongsPageMaxLimit)
+	if limit <= 0 || limit > librarySongsPageMaxLimit {
+		limit = librarySongsPageMaxLimit
+	}
+
+	songs, total, err := s.songs.listSongsPage(offset, limit)
 	if err != nil {
 		Errorf("list library songs: %v", err)
 		writeJSON(w, http.StatusInternalServerError, map[string]string{
@@ -129,7 +141,23 @@ func (s *server) handleLibrarySongs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, librarySongsResponse{Songs: songs})
+	writeJSON(w, http.StatusOK, librarySongsResponse{
+		Songs:  songs,
+		Total:  total,
+		Offset: offset,
+		Limit:  limit,
+	})
+}
+
+func parseLibraryPageParam(raw string, fallback int) int {
+	if raw == "" {
+		return fallback
+	}
+	value, err := strconv.Atoi(raw)
+	if err != nil {
+		return fallback
+	}
+	return value
 }
 
 func (s *server) handleTabContent(w http.ResponseWriter, r *http.Request) {

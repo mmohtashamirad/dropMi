@@ -1,16 +1,75 @@
+const PAGE_SIZE = 5;
+
 export function initTab() {
-  loadLibrarySongs();
+  const state = {
+    offset: 0,
+    total: 0,
+    loading: false,
+  };
+
+  const prevButton = document.getElementById("library-prev");
+  const nextButton = document.getElementById("library-next");
+  const pageInput = document.getElementById("library-page-input");
+
+  prevButton.addEventListener("click", () => {
+    if (state.loading) return;
+    state.offset = Math.max(0, state.offset - PAGE_SIZE);
+    loadLibraryPage(state);
+  });
+
+  nextButton.addEventListener("click", () => {
+    if (state.loading) return;
+    if (state.offset + PAGE_SIZE >= state.total) return;
+    state.offset += PAGE_SIZE;
+    loadLibraryPage(state);
+  });
+
+  const jumpToInputPage = () => {
+    if (state.loading) return;
+    const totalPages = Math.max(1, Math.ceil(state.total / PAGE_SIZE));
+    const currentPage = Math.floor(state.offset / PAGE_SIZE) + 1;
+    const requested = Number.parseInt(pageInput.value, 10);
+    if (!Number.isFinite(requested)) {
+      pageInput.value = String(currentPage);
+      return;
+    }
+    const clamped = Math.min(totalPages, Math.max(1, requested));
+    pageInput.value = String(clamped);
+    const newOffset = (clamped - 1) * PAGE_SIZE;
+    if (newOffset === state.offset) return;
+    state.offset = newOffset;
+    loadLibraryPage(state);
+  };
+
+  pageInput.addEventListener("change", jumpToInputPage);
+  pageInput.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      jumpToInputPage();
+    }
+  });
+
+  loadLibraryPage(state);
   return {};
 }
 
-async function loadLibrarySongs() {
+async function loadLibraryPage(state) {
   const count = document.getElementById("library-count");
-  const state = document.getElementById("library-state");
+  const stateBox = document.getElementById("library-state");
   const tableWrap = document.getElementById("library-table-wrap");
   const tableBody = document.getElementById("library-table-body");
+  const pagination = document.getElementById("library-pagination");
+  const pageInput = document.getElementById("library-page-input");
+  const pageTotal = document.getElementById("library-page-total");
+  const prevButton = document.getElementById("library-prev");
+  const nextButton = document.getElementById("library-next");
+
+  state.loading = true;
+  prevButton.disabled = true;
+  nextButton.disabled = true;
 
   try {
-    const response = await fetch("/library-songs");
+    const response = await fetch(`/library-songs?offset=${state.offset}&limit=${PAGE_SIZE}`);
     const payload = await response.json().catch(() => null);
 
     if (!response.ok) {
@@ -18,23 +77,45 @@ async function loadLibrarySongs() {
     }
 
     const songs = Array.isArray(payload?.songs) ? payload.songs : [];
-    count.textContent = `${songs.length} ${songs.length === 1 ? "song" : "songs"}`;
+    const total = Number.isFinite(payload?.total) ? payload.total : songs.length;
+    state.total = total;
 
-    if (songs.length === 0) {
-      tableWrap.hidden = true;
-      state.hidden = false;
-      state.textContent = "No songs have been indexed yet.";
+    if (state.offset >= total && total > 0) {
+      state.offset = Math.max(0, total - PAGE_SIZE - ((total - 1) % PAGE_SIZE));
+      await loadLibraryPage(state);
       return;
     }
 
-    state.hidden = true;
+    count.textContent = `${total} ${total === 1 ? "song" : "songs"}`;
+
+    if (total === 0) {
+      tableWrap.hidden = true;
+      pagination.hidden = true;
+      stateBox.hidden = false;
+      stateBox.textContent = "No songs have been indexed yet.";
+      return;
+    }
+
+    stateBox.hidden = true;
     tableWrap.hidden = false;
     tableBody.replaceChildren(...songs.map(createSongRow));
+
+    const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+    const currentPage = Math.floor(state.offset / PAGE_SIZE) + 1;
+    pageInput.value = String(currentPage);
+    pageInput.max = String(totalPages);
+    pageTotal.textContent = String(totalPages);
+    pagination.hidden = false;
+    prevButton.disabled = state.offset === 0;
+    nextButton.disabled = state.offset + PAGE_SIZE >= total;
   } catch (error) {
     count.textContent = "Unavailable";
     tableWrap.hidden = true;
-    state.hidden = false;
-    state.textContent = error.message || "Unable to load the music library.";
+    pagination.hidden = true;
+    stateBox.hidden = false;
+    stateBox.textContent = error.message || "Unable to load the music library.";
+  } finally {
+    state.loading = false;
   }
 }
 

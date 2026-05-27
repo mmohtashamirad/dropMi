@@ -66,7 +66,10 @@ type librarySong struct {
 }
 
 type librarySongsResponse struct {
-	Songs []librarySong `json:"songs"`
+	Songs  []librarySong `json:"songs"`
+	Total  int           `json:"total"`
+	Offset int           `json:"offset"`
+	Limit  int           `json:"limit"`
 }
 
 type confirmRequest struct {
