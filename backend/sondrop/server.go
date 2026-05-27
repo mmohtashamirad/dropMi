@@ -7,7 +7,10 @@ import (
 	"strconv"
 )
 
-const librarySongsPageMaxLimit = 5
+const (
+	librarySongsPageDefaultLimit = 5
+	librarySongsPageMaxLimit     = 100
+)
 
 type server struct {
 	uploadTmpDir         string
@@ -127,8 +130,11 @@ func (s *server) handleLibrarySongs(w http.ResponseWriter, r *http.Request) {
 	if offset < 0 {
 		offset = 0
 	}
-	limit := parseLibraryPageParam(r.URL.Query().Get("limit"), librarySongsPageMaxLimit)
-	if limit <= 0 || limit > librarySongsPageMaxLimit {
+	limit := parseLibraryPageParam(r.URL.Query().Get("limit"), librarySongsPageDefaultLimit)
+	if limit <= 0 {
+		limit = librarySongsPageDefaultLimit
+	}
+	if limit > librarySongsPageMaxLimit {
 		limit = librarySongsPageMaxLimit
 	}
 

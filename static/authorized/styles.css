@@ -531,6 +531,27 @@ h1 {
   opacity: 1;
 }
 
+.library-page-size {
+  padding: 9px 12px;
+  border: 1px solid var(--panel-border);
+  border-radius: 999px;
+  background: var(--bg-top);
+  color: var(--text);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.library-page-size option {
+  background: var(--bg-top);
+  color: var(--text);
+}
+
+.library-page-size:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
 .duplicate-notice {
   width: min(760px, 100%);
   margin-top: 18px;

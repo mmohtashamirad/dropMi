@@ -1,9 +1,14 @@
-const PAGE_SIZE = 5;
+const PAGE_SIZE_OPTIONS = [5, 10, 25, 50, 100];
+const DEFAULT_PAGE_SIZE = 5;
 
 export function initTab() {
+  const pageSizeSelect = document.getElementById("library-page-size");
+  const initialPageSize = parsePageSize(pageSizeSelect?.value, DEFAULT_PAGE_SIZE);
+
   const state = {
     offset: 0,
     total: 0,
+    pageSize: initialPageSize,
     loading: false,
   };
 
@@ -13,21 +18,21 @@ export function initTab() {
 
   prevButton.addEventListener("click", () => {
     if (state.loading) return;
-    state.offset = Math.max(0, state.offset - PAGE_SIZE);
+    state.offset = Math.max(0, state.offset - state.pageSize);
     loadLibraryPage(state);
   });
 
   nextButton.addEventListener("click", () => {
     if (state.loading) return;
-    if (state.offset + PAGE_SIZE >= state.total) return;
-    state.offset += PAGE_SIZE;
+    if (state.offset + state.pageSize >= state.total) return;
+    state.offset += state.pageSize;
     loadLibraryPage(state);
   });
 
   const jumpToInputPage = () => {
     if (state.loading) return;
-    const totalPages = Math.max(1, Math.ceil(state.total / PAGE_SIZE));
-    const currentPage = Math.floor(state.offset / PAGE_SIZE) + 1;
+    const totalPages = Math.max(1, Math.ceil(state.total / state.pageSize));
+    const currentPage = Math.floor(state.offset / state.pageSize) + 1;
     const requested = Number.parseInt(pageInput.value, 10);
     if (!Number.isFinite(requested)) {
       pageInput.value = String(currentPage);
@@ -35,7 +40,7 @@ export function initTab() {
     }
     const clamped = Math.min(totalPages, Math.max(1, requested));
     pageInput.value = String(clamped);
-    const newOffset = (clamped - 1) * PAGE_SIZE;
+    const newOffset = (clamped - 1) * state.pageSize;
     if (newOffset === state.offset) return;
     state.offset = newOffset;
     loadLibraryPage(state);
@@ -49,8 +54,25 @@ export function initTab() {
     }
   });
 
+  pageSizeSelect.addEventListener("change", () => {
+    if (state.loading) return;
+    const newSize = parsePageSize(pageSizeSelect.value, state.pageSize);
+    if (newSize === state.pageSize) return;
+    state.offset = Math.floor(state.offset / newSize) * newSize;
+    state.pageSize = newSize;
+    loadLibraryPage(state);
+  });
+
   loadLibraryPage(state);
   return {};
+}
+
+function parsePageSize(raw, fallback) {
+  const value = Number.parseInt(raw, 10);
+  if (PAGE_SIZE_OPTIONS.includes(value)) {
+    return value;
+  }
+  return fallback;
 }
 
 async function loadLibraryPage(state) {
@@ -61,15 +83,17 @@ async function loadLibraryPage(state) {
   const pagination = document.getElementById("library-pagination");
   const pageInput = document.getElementById("library-page-input");
   const pageTotal = document.getElementById("library-page-total");
+  const pageSizeSelect = document.getElementById("library-page-size");
   const prevButton = document.getElementById("library-prev");
   const nextButton = document.getElementById("library-next");
 
   state.loading = true;
   prevButton.disabled = true;
   nextButton.disabled = true;
+  pageSizeSelect.disabled = true;
 
   try {
-    const response = await fetch(`/library-songs?offset=${state.offset}&limit=${PAGE_SIZE}`);
+    const response = await fetch(`/library-songs?offset=${state.offset}&limit=${state.pageSize}`);
     const payload = await response.json().catch(() => null);
 
     if (!response.ok) {
@@ -81,7 +105,8 @@ async function loadLibraryPage(state) {
     state.total = total;
 
     if (state.offset >= total && total > 0) {
-      state.offset = Math.max(0, total - PAGE_SIZE - ((total - 1) % PAGE_SIZE));
+      const lastPageIndex = Math.max(0, Math.ceil(total / state.pageSize) - 1);
+      state.offset = lastPageIndex * state.pageSize;
       await loadLibraryPage(state);
       return;
     }
@@ -100,14 +125,14 @@ async function loadLibraryPage(state) {
     tableWrap.hidden = false;
     tableBody.replaceChildren(...songs.map(createSongRow));
 
-    const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-    const currentPage = Math.floor(state.offset / PAGE_SIZE) + 1;
+    const totalPages = Math.max(1, Math.ceil(total / state.pageSize));
+    const currentPage = Math.floor(state.offset / state.pageSize) + 1;
     pageInput.value = String(currentPage);
     pageInput.max = String(totalPages);
     pageTotal.textContent = String(totalPages);
     pagination.hidden = false;
     prevButton.disabled = state.offset === 0;
-    nextButton.disabled = state.offset + PAGE_SIZE >= total;
+    nextButton.disabled = state.offset + state.pageSize >= total;
   } catch (error) {
     count.textContent = "Unavailable";
     tableWrap.hidden = true;
@@ -116,6 +141,7 @@ async function loadLibraryPage(state) {
     stateBox.textContent = error.message || "Unable to load the music library.";
   } finally {
     state.loading = false;
+    pageSizeSelect.disabled = false;
   }
 }
 
