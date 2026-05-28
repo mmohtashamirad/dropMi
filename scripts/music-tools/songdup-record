@@ -77,6 +77,37 @@ def parse_language(parsed):
     return ""
 
 
+def read_language_ffprobe(path):
+    # eyeD3's JSON plugin omits the TLAN frame, so probe the file with ffprobe
+    # to surface whatever language tag was actually written.
+    try:
+        completed = subprocess.run(
+            [
+                "ffprobe",
+                "-v", "quiet",
+                "-show_entries", "format_tags=language",
+                "-of", "default=noprint_wrappers=1",
+                path,
+            ],
+            capture_output=True,
+            text=True,
+        )
+    except Exception:
+        return ""
+
+    if completed.returncode != 0:
+        return ""
+
+    for line in completed.stdout.splitlines():
+        line = line.strip()
+        if "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        if key.lower().endswith("language"):
+            return value.strip()
+    return ""
+
+
 def find_tag_root(value):
     if isinstance(value, dict):
         for key in ("tag", "tags", "metadata"):
@@ -106,6 +137,14 @@ def read_tags(path):
     }
 
 
+def read_metadata(path):
+    tags = read_tags(path)
+    language = read_language_ffprobe(path)
+    if language:
+        tags["language"] = language
+    return tags
+
+
 def read_fingerprint(path):
     output = run_command(["fpcalc", "-json", path])
     parsed = json.loads(output)
@@ -125,7 +164,7 @@ def main():
     args = parser.parse_args()
 
     record = read_fingerprint(args.path)
-    record.update(read_tags(args.path))
+    record.update(read_metadata(args.path))
     print(json.dumps(record, ensure_ascii=False, sort_keys=True))
 
 
