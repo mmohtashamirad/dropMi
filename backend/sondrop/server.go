@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"fmt"
 	"net/http"
 	"os"
 	"strconv"
@@ -193,10 +194,11 @@ func (s *server) handleTabContent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	templatePath, ok := tabTemplatePaths[tab.Key]
-	if !ok {
-		http.NotFound(w, r)
-		return
+	var templatePath string
+	if tab.AdminOnly {
+		templatePath = fmt.Sprintf("./static/admin/tabs/%s.html", tab.Key)
+	} else {
+		templatePath = fmt.Sprintf("./static/authorized/tabs/%s.html", tab.Key)
 	}
 
 	content, err := os.ReadFile(templatePath)
@@ -212,17 +214,6 @@ func (s *server) handleTabContent(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Expires", "0")
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(content)
-}
-
-var tabTemplatePaths = map[string]string{
-	"drop": "./static/authorized/tabs/drop.html",
-	"song_lib": "./static/authorized/tabs/song_lib.html",
-	"tab3": "./static/authorized/tabs/tab3.html",
-	"tab4": "./static/authorized/tabs/tab4.html",
-	"tab5": "./static/authorized/tabs/tab5.html",
-	"tab6": "./static/admin/tabs/tab6.html",
-	"tab7": "./static/authorized/tabs/tab7.html",
-	"tab8": "./static/admin/tabs/tab8.html",
 }
 
 func allTabs() []tabItem {
