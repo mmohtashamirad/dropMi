@@ -260,7 +260,7 @@ func (s *songStore) upsertFromFile(ctx context.Context, path string) error {
 	return nil
 }
 
-func (s *songStore) listSongsPage(offset, limit int) ([]librarySong, int, error) {
+func (s *songStore) listSongsPage(offset, limit int, filter string) ([]librarySong, int, error) {
 	if offset < 0 {
 		offset = 0
 	}
@@ -268,8 +268,10 @@ func (s *songStore) listSongsPage(offset, limit int) ([]librarySong, int, error)
 		limit = 0
 	}
 
+	where, whereArgs := buildSongFilter(filter)
+
 	var total int
-	if err := s.db.QueryRow(`SELECT COUNT(*) FROM songs`).Scan(&total); err != nil {
+	if err := s.db.QueryRow(`SELECT COUNT(*) FROM songs `+where, whereArgs...).Scan(&total); err != nil {
 		return nil, 0, fmt.Errorf("count library songs: %w", err)
 	}
 
@@ -278,15 +280,17 @@ func (s *songStore) listSongsPage(offset, limit int) ([]librarySong, int, error)
 		return songs, total, nil
 	}
 
-	rows, err := s.db.Query(
-		`
-			SELECT path, file_name, duration, artist, track_name, album, genre, comment, language, file_size, updated_at
-			FROM songs
-			ORDER BY lower(artist), lower(album), lower(track_name), lower(file_name)
-			LIMIT ? OFFSET ?
-		`,
-		limit, offset,
-	)
+	query := `
+		SELECT path, file_name, duration, artist, track_name, album, genre, comment, language, file_size, updated_at
+		FROM songs
+		` + where + `
+		ORDER BY lower(artist), lower(album), lower(track_name), lower(file_name)
+		LIMIT ? OFFSET ?
+	`
+	args := append([]any{}, whereArgs...)
+	args = append(args, limit, offset)
+
+	rows, err := s.db.Query(query, args...)
 	if err != nil {
 		return nil, 0, fmt.Errorf("list library songs: %w", err)
 	}
@@ -427,6 +431,31 @@ func (s *songStore) deleteMissing(seen map[string]bool) error {
 func fingerprintHash(fingerprint string) string {
 	sum := sha256.Sum256([]byte(fingerprint))
 	return hex.EncodeToString(sum[:])
+}
+
+func buildSongFilter(filter string) (string, []any) {
+	filter = strings.TrimSpace(filter)
+	if filter == "" {
+		return "", nil
+	}
+
+	escaped := escapeSQLLike(filter)
+	pattern := "%" + strings.ToLower(escaped) + "%"
+	clause := `WHERE
+		lower(artist)     LIKE ? ESCAPE '\' OR
+		lower(track_name) LIKE ? ESCAPE '\' OR
+		lower(genre)      LIKE ? ESCAPE '\' OR
+		lower(language)   LIKE ? ESCAPE '\'`
+	return clause, []any{pattern, pattern, pattern, pattern}
+}
+
+func escapeSQLLike(value string) string {
+	replacer := strings.NewReplacer(
+		`\`, `\\`,
+		`%`, `\%`,
+		`_`, `\_`,
+	)
+	return replacer.Replace(value)
 }
 
 func formatSongModTime(modTime time.Time) string {

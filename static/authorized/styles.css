@@ -71,7 +71,7 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 14px;
   padding: 84px 24px 24px;
   position: relative;
@@ -485,6 +485,26 @@ h1 {
 
 .library-duration {
   font-variant-numeric: tabular-nums;
+}
+
+.library-filter {
+  margin-bottom: 14px;
+  width: 400px;
+}
+
+.library-filter-input {
+  width: 100%;
+  padding: 11px 16px;
+  border: 1px solid var(--input-border);
+  border-radius: 999px;
+  background: var(--input-bg);
+  color: var(--text);
+  font: inherit;
+  font-weight: 500;
+}
+
+.library-filter-input::placeholder {
+  color: var(--muted);
 }
 
 .library-pagination {

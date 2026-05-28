@@ -1,5 +1,6 @@
 const PAGE_SIZE_OPTIONS = [5, 10, 25, 50, 100];
 const DEFAULT_PAGE_SIZE = 5;
+const FILTER_DEBOUNCE_MS = 1500;
 
 export function initTab() {
   const pageSizeSelect = document.getElementById("library-page-size");
@@ -9,12 +10,14 @@ export function initTab() {
     offset: 0,
     total: 0,
     pageSize: initialPageSize,
+    filter: "",
     loading: false,
   };
 
   const prevButton = document.getElementById("library-prev");
   const nextButton = document.getElementById("library-next");
   const pageInput = document.getElementById("library-page-input");
+  const filterInput = document.getElementById("library-filter-input");
 
   prevButton.addEventListener("click", () => {
     if (state.loading) return;
@@ -63,8 +66,38 @@ export function initTab() {
     loadLibraryPage(state);
   });
 
+  let filterDebounceTimer = null;
+  const cancelFilterDebounce = () => {
+    if (filterDebounceTimer !== null) {
+      clearTimeout(filterDebounceTimer);
+      filterDebounceTimer = null;
+    }
+  };
+  const applyFilter = () => {
+    cancelFilterDebounce();
+    const value = filterInput.value.trim();
+    if (value === state.filter) return;
+    state.filter = value;
+    state.offset = 0;
+    loadLibraryPage(state);
+  };
+  filterInput.addEventListener("input", () => {
+    cancelFilterDebounce();
+    filterDebounceTimer = setTimeout(applyFilter, FILTER_DEBOUNCE_MS);
+  });
+  filterInput.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      applyFilter();
+    }
+  });
+
   loadLibraryPage(state);
-  return {};
+  return {
+    beforeLeave() {
+      cancelFilterDebounce();
+    },
+  };
 }
 
 function parsePageSize(raw, fallback) {
@@ -93,7 +126,14 @@ async function loadLibraryPage(state) {
   pageSizeSelect.disabled = true;
 
   try {
-    const response = await fetch(`/library-songs?offset=${state.offset}&limit=${state.pageSize}`);
+    const params = new URLSearchParams({
+      offset: String(state.offset),
+      limit: String(state.pageSize),
+    });
+    if (state.filter) {
+      params.set("q", state.filter);
+    }
+    const response = await fetch(`/library-songs?${params.toString()}`);
     const payload = await response.json().catch(() => null);
 
     if (!response.ok) {
@@ -117,7 +157,9 @@ async function loadLibraryPage(state) {
       tableWrap.hidden = true;
       pagination.hidden = true;
       stateBox.hidden = false;
-      stateBox.textContent = "No songs have been indexed yet.";
+      stateBox.textContent = state.filter
+        ? "No songs match the current filter."
+        : "No songs have been indexed yet.";
       return;
     }
 

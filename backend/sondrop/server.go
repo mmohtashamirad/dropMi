@@ -138,7 +138,9 @@ func (s *server) handleLibrarySongs(w http.ResponseWriter, r *http.Request) {
 		limit = librarySongsPageMaxLimit
 	}
 
-	songs, total, err := s.songs.listSongsPage(offset, limit)
+	filter := r.URL.Query().Get("q")
+
+	songs, total, err := s.songs.listSongsPage(offset, limit, filter)
 	if err != nil {
 		Errorf("list library songs: %v", err)
 		writeJSON(w, http.StatusInternalServerError, map[string]string{
