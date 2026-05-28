@@ -214,7 +214,7 @@ func (s *server) handleTabContent(w http.ResponseWriter, r *http.Request) {
 
 var tabTemplatePaths = map[string]string{
 	"drop": "./static/authorized/tabs/drop.html",
-	"tab2": "./static/authorized/tabs/tab2.html",
+	"song_lib": "./static/authorized/tabs/song_lib.html",
 	"tab3": "./static/authorized/tabs/tab3.html",
 	"tab4": "./static/authorized/tabs/tab4.html",
 	"tab5": "./static/authorized/tabs/tab5.html",
@@ -226,7 +226,7 @@ var tabTemplatePaths = map[string]string{
 func allTabs() []tabItem {
 	return []tabItem{
 		{Key: "drop", Title: "Drop", AdminOnly: false},
-		{Key: "tab2", Title: "Tab2", AdminOnly: false},
+		{Key: "song_lib", Title: "Song Library", AdminOnly: false},
 		{Key: "tab3", Title: "Tab3", AdminOnly: true},
 		{Key: "tab4", Title: "Tab4", AdminOnly: true},
 		{Key: "tab5", Title: "Tab5", AdminOnly: true},
