@@ -1,4 +1,4 @@
-module sondrop
+module dropMi
 
 go 1.25.0
 

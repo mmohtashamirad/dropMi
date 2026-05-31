@@ -16,8 +16,8 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-const sessionCookieName = "sondrop_session"
-const refreshCookieName = "sondrop_refresh"
+const sessionCookieName = "dropMi_session"
+const refreshCookieName = "dropMi_refresh"
 
 type sessionStore struct {
 	db *sql.DB

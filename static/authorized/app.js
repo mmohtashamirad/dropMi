@@ -2,7 +2,7 @@ import { elements, refreshElements } from "/authorized/dom.js";
 import { checkSession, logout } from "/authorized/auth-client.js";
 import { hideSessionBar, showSessionBar } from "/authorized/auth-ui.js";
 
-const themeStorageKey = "sondrop-theme";
+const themeStorageKey = "dropMi-theme";
 let activeTabController = null;
 let activeTabKey = "";
 let availableTabs = [];

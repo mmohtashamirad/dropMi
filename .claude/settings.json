@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(go build *)",
+      "Bash(go vet *)",
+      "Bash(git -C /home/milad/mydevelopments/dropMi mv static/authorized/tabs/tab2.html static/authorized/tabs/song_lib.html)",
+      "Bash(git -C /home/milad/mydevelopments/dropMi mv static/authorized/tabs/tab2.js static/authorized/tabs/song_lib.js)"
+    ]
+  }
+}

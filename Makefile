@@ -1,6 +1,6 @@
-APP_NAME := sondrop
+APP_NAME := dropMi
 BUILD_DIR := build
-APP_DIR := ./backend/sondrop
+APP_DIR := ./backend/dropMi
 
 .PHONY: build clean
 

@@ -15,7 +15,7 @@ func createTempUploadFile(dir string, originalName string) (*os.File, string, er
 		return nil, "", err
 	}
 
-	tempFile, err := os.CreateTemp(dir, "sondrop-*"+filepath.Ext(originalName))
+	tempFile, err := os.CreateTemp(dir, "dropMi-*"+filepath.Ext(originalName))
 	if err != nil {
 		return nil, "", err
 	}

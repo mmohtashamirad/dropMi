@@ -1,10 +1,10 @@
 services:
-  sondrop:
+  dropMi:
     build:
       context: .
       dockerfile: Dockerfile.app
-    image: sondrop-app
-    container_name: sondrop
+    image: dropMi-app
+    container_name: dropMi
     user: "1000:1000"
     group_add:
       - "105"
@@ -18,7 +18,7 @@ services:
       - "/data/config/dropmi.cfg"
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock"
-      - "/mnt/craid1/docker-containers/sondrop/data:/data"
+      - "/mnt/craid1/docker-containers/dropMi/data:/data"
     depends_on:
       - music-tools
     networks:
@@ -33,7 +33,7 @@ services:
     user: "1000:1000"
     command: ["sleep", "infinity"]
     volumes:
-      - "/mnt/craid1/docker-containers/sondrop/data:/data"
+      - "/mnt/craid1/docker-containers/dropMi/data:/data"
 
 networks:
   cloudflare:

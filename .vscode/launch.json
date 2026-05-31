@@ -2,11 +2,11 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Debug sondrop server",
+      "name": "Debug dropMi server",
       "type": "go",
       "request": "launch",
       "mode": "debug",
-      "program": "${workspaceFolder}/backend/sondrop",
+      "program": "${workspaceFolder}/backend/dropMi",
       "cwd": "${workspaceFolder}",
       "args": [
         "-root-path",

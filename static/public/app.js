@@ -1,7 +1,7 @@
 import { login, checkSession } from "/public/auth-client.js";
 import { elements } from "/public/dom.js";
 
-const themeStorageKey = "sondrop-theme";
+const themeStorageKey = "dropMi-theme";
 
 applyStoredTheme();
 redirectIfAuthenticated();
