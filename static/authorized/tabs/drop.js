@@ -1,5 +1,6 @@
 import { elements } from "/authorized/dom.js";
 import {
+  clearResultError,
   getSelectedLyricsOption,
   getSelectedMetadata,
   renderConfirmError,
@@ -124,7 +125,7 @@ export function initTab() {
 
     elements.reshazamButton.disabled = true;
     elements.reshazamButton.textContent = "Re-shazaming...";
-    clearTransientResultError();
+    clearResultError();
 
     const result = await reShazam(currentUploadId);
     if (!result.ok) {
@@ -369,7 +370,7 @@ async function startLyricsSearch({ showMissingMetadataError }) {
   elements.findLyricsButton.disabled = true;
   elements.reshazamButton.disabled = true;
   elements.findLyricsButton.textContent = "Finding lyrics...";
-  clearTransientResultError();
+  clearResultError();
 
   const result = await findLyricsBySearchText(lyricsSearchText);
   if (requestId !== lyricsSearchRequestId) {
