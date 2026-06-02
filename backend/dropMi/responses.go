@@ -7,13 +7,13 @@ import (
 )
 
 type analyzeResponse struct {
-	UploadID      string         `json:"uploadId,omitempty"`
-	FileName      string         `json:"fileName"`
-	Duplicate     *duplicateSong `json:"duplicate,omitempty"`
-	EyeD3Output   string         `json:"eyeD3Output,omitempty"`
-	SongrecOutput string         `json:"songrecOutput,omitempty"`
-	LyricsOptions []lyricsOption `json:"lyricsOptions,omitempty"`
-	Error         string         `json:"error,omitempty"`
+	UploadID      string          `json:"uploadId,omitempty"`
+	FileName      string          `json:"fileName"`
+	Duplicates    []duplicateSong `json:"duplicates,omitempty"`
+	EyeD3Output   string          `json:"eyeD3Output,omitempty"`
+	SongrecOutput string          `json:"songrecOutput,omitempty"`
+	LyricsOptions []lyricsOption  `json:"lyricsOptions,omitempty"`
+	Error         string          `json:"error,omitempty"`
 }
 
 type duplicateSong struct {

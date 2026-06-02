@@ -322,48 +322,6 @@ func (s *songStore) listSongsPage(offset, limit int, filter string) ([]librarySo
 	return songs, total, nil
 }
 
-func (s *songStore) findDuplicate(fingerprint string) (*songRecord, float64, error) {
-	fingerprint = strings.TrimSpace(fingerprint)
-	if fingerprint == "" {
-		return nil, 0, nil
-	}
-
-	fingerprintHash := fingerprintHash(fingerprint)
-	var record songRecord
-	err := s.db.QueryRow(
-		`
-			SELECT path, file_name, fingerprint, fingerprint_hash, duration, artist, track_name, album, genre, comment, language, file_size, mod_time
-			FROM songs
-			WHERE fingerprint_hash = ?
-			ORDER BY updated_at DESC
-			LIMIT 1
-		`,
-		fingerprintHash,
-	).Scan(
-		&record.Path,
-		&record.FileName,
-		&record.Fingerprint,
-		&record.FingerprintHash,
-		&record.Duration,
-		&record.Artist,
-		&record.TrackName,
-		&record.Album,
-		&record.Genre,
-		&record.Comment,
-		&record.Language,
-		&record.FileSize,
-		&record.ModTime,
-	)
-	if errors.Is(err, sql.ErrNoRows) {
-		return nil, 0, nil
-	}
-	if err != nil {
-		return nil, 0, fmt.Errorf("find duplicate song: %w", err)
-	}
-
-	return &record, 1, nil
-}
-
 func (s *songStore) findByPath(path string) (songRecord, bool, error) {
 	var record songRecord
 	err := s.db.QueryRow(

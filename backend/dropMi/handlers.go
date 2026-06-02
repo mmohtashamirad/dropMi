@@ -205,7 +205,7 @@ func (s *server) handleUpload(w http.ResponseWriter, r *http.Request) {
 	}
 	Debugf("saved upload to %s", tempPath)
 
-	duplicate, err := s.findDuplicateUpload(r.Context(), tempPath)
+	duplicates, err := s.findDuplicateUpload(r.Context(), tempPath)
 	if err != nil {
 		Errorf("fingerprint upload: %v", err)
 		writeJSON(w, http.StatusInternalServerError, analyzeResponse{
@@ -226,7 +226,7 @@ func (s *server) handleUpload(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusInternalServerError, analyzeResponse{
 			UploadID:    filepath.Base(tempPath),
 			FileName:    header.Filename,
-			Duplicate:   duplicate,
+			Duplicates:  duplicates,
 			EyeD3Output: eyeD3Output,
 			Error:       message,
 		})
@@ -245,7 +245,7 @@ func (s *server) handleUpload(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusInternalServerError, analyzeResponse{
 			UploadID:      filepath.Base(tempPath),
 			FileName:      header.Filename,
-			Duplicate:     duplicate,
+			Duplicates:    duplicates,
 			EyeD3Output:   eyeD3Output,
 			SongrecOutput: songrecOutput,
 			Error:         message,
@@ -258,7 +258,7 @@ func (s *server) handleUpload(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, analyzeResponse{
 		UploadID:      filepath.Base(tempPath),
 		FileName:      header.Filename,
-		Duplicate:     duplicate,
+		Duplicates:    duplicates,
 		EyeD3Output:   eyeD3Output,
 		SongrecOutput: songrecOutput,
 	})
@@ -388,27 +388,40 @@ func (s *server) handleReshazam(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (s *server) findDuplicateUpload(ctx context.Context, path string) (*duplicateSong, error) {
-	fingerprint, _, err := runFPCalc(ctx, path)
-	if err != nil {
-		return nil, err
-	}
+const (
+	duplicateMatchLimit         = 5
+	duplicateMinSimilarityScore = 0.5
+)
 
-	record, similarity, err := s.songs.findDuplicate(fingerprint.Fingerprint)
+func (s *server) findDuplicateUpload(ctx context.Context, path string) ([]duplicateSong, error) {
+	matches, _, err := runSongDupSimilarity(ctx, path, duplicateMatchLimit, duplicateMinSimilarityScore)
 	if err != nil {
 		return nil, err
 	}
-	if record == nil || similarity <= 0 {
+	if len(matches) == 0 {
 		return nil, nil
 	}
 
+	duplicates := make([]duplicateSong, 0, len(matches))
+	for _, match := range matches {
+		duplicate, err := s.duplicateSongFromMatch(match)
+		if err != nil {
+			return nil, err
+		}
+		duplicates = append(duplicates, duplicate)
+	}
+
+	return duplicates, nil
+}
+
+func (s *server) duplicateSongFromMatch(match similarityMatch) (duplicateSong, error) {
 	absoluteUploadDir, err := filepath.Abs(s.uploadDir)
 	if err != nil {
-		return nil, err
+		return duplicateSong{}, err
 	}
-	absoluteRecordPath, err := filepath.Abs(record.Path)
+	absoluteRecordPath, err := filepath.Abs(match.Path)
 	if err != nil {
-		return nil, err
+		return duplicateSong{}, err
 	}
 
 	relativePath, err := filepath.Rel(absoluteUploadDir, absoluteRecordPath)
@@ -416,11 +429,11 @@ func (s *server) findDuplicateUpload(ctx context.Context, path string) (*duplica
 		relativePath = ""
 	}
 
-	return &duplicateSong{
-		FileName:     record.FileName,
+	return duplicateSong{
+		FileName:     match.FileName,
 		RelativePath: filepath.ToSlash(relativePath),
-		Similarity:   similarity,
-		Duration:     record.Duration,
+		Similarity:   match.Similarity,
+		Duration:     match.Duration,
 	}, nil
 }
 

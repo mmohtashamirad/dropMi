@@ -1,0 +1,101 @@
+#!/usr/bin/env python3
+import argparse
+import json
+import sqlite3
+import sys
+
+import acoustid
+
+
+def read_query_fingerprint(path):
+    duration, fingerprint = acoustid.fingerprint_file(path, force_fpcalc=True)
+    return float(duration or 0), fingerprint
+
+
+def fetch_candidates(db_path, duration, window):
+    connection = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+    try:
+        connection.execute("PRAGMA busy_timeout = 5000")
+        if duration > 0 and window > 0:
+            rows = connection.execute(
+                """
+                SELECT path, file_name, fingerprint, duration
+                FROM songs
+                WHERE duration BETWEEN ? AND ?
+                """,
+                (duration - window, duration + window),
+            ).fetchall()
+        else:
+            rows = connection.execute(
+                "SELECT path, file_name, fingerprint, duration FROM songs"
+            ).fetchall()
+    finally:
+        connection.close()
+    return rows
+
+
+def score_candidates(query_duration, query_fingerprint, rows, min_similarity):
+    matches = []
+    for path, file_name, fingerprint, duration in rows:
+        fingerprint = (fingerprint or "").strip()
+        if not fingerprint:
+            continue
+        try:
+            similarity = acoustid.compare_fingerprints(
+                (query_duration, query_fingerprint),
+                (float(duration or 0), fingerprint.encode("utf-8")),
+            )
+        except Exception:
+            # Skip fingerprints that fail to decode rather than aborting the whole check.
+            continue
+        if similarity < min_similarity:
+            continue
+        matches.append(
+            {
+                "path": path,
+                "file_name": file_name,
+                "duration": float(duration or 0),
+                "similarity": float(similarity),
+            }
+        )
+
+    matches.sort(key=lambda match: (-match["similarity"], match["file_name"]))
+    return matches
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Find songs in the dropMi library whose chromaprint fingerprint is similar to one audio file."
+    )
+    parser.add_argument("path")
+    parser.add_argument("--db", required=True, help="path to the dropMi SQLite database")
+    parser.add_argument("--limit", type=int, default=5, help="maximum number of matches to return")
+    parser.add_argument(
+        "--min-similarity",
+        type=float,
+        default=0.5,
+        help="minimum similarity score [0,1] to report a match",
+    )
+    parser.add_argument(
+        "--duration-window",
+        type=float,
+        default=8.0,
+        help="only compare against songs within this many seconds of the query duration",
+    )
+    args = parser.parse_args()
+
+    query_duration, query_fingerprint = read_query_fingerprint(args.path)
+    rows = fetch_candidates(args.db, query_duration, args.duration_window)
+    matches = score_candidates(query_duration, query_fingerprint, rows, args.min_similarity)
+    if args.limit > 0:
+        matches = matches[: args.limit]
+
+    print(json.dumps({"matches": matches}, ensure_ascii=False))
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except Exception as exc:
+        print(str(exc), file=sys.stderr)
+        sys.exit(1)

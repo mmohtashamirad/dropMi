@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -17,10 +18,12 @@ const musicToolsContainerName = "music-tools"
 
 var serverRootPath string
 var dockerMountPoint string
+var songsDBPath string
 
-func configureMusicTools(rootPath string, mountPoint string) {
+func configureMusicTools(rootPath string, mountPoint string, dbPath string) {
 	serverRootPath = rootPath
 	dockerMountPoint = mountPoint
+	songsDBPath = dbPath
 }
 
 func runEyeD3(parent context.Context, filePath string) (string, error) {
@@ -170,6 +173,51 @@ func runSongDupRecord(parent context.Context, filePath string) (songIndexData, s
 	}
 
 	return parsed, output, nil
+}
+
+type similarityMatch struct {
+	Path       string  `json:"path"`
+	FileName   string  `json:"file_name"`
+	Duration   float64 `json:"duration"`
+	Similarity float64 `json:"similarity"`
+}
+
+type similarityResult struct {
+	Matches []similarityMatch `json:"matches"`
+}
+
+func runSongDupSimilarity(parent context.Context, filePath string, limit int, minSimilarity float64) ([]similarityMatch, string, error) {
+	dbPath, err := musicToolsPath(songsDBPath)
+	if err != nil {
+		return nil, "", fmt.Errorf("resolve songs db path: %w", err)
+	}
+
+	output, err := runMusicToolsCommand(
+		parent,
+		filePath,
+		"songdup-similarity",
+		"--db", dbPath,
+		"--limit", strconv.Itoa(limit),
+		"--min-similarity", strconv.FormatFloat(minSimilarity, 'f', -1, 64),
+	)
+	if err != nil {
+		return nil, output, err
+	}
+
+	jsonOutput := strings.TrimSpace(output)
+	for _, line := range strings.Split(jsonOutput, "\n") {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "{") && strings.HasSuffix(line, "}") {
+			jsonOutput = line
+		}
+	}
+
+	var parsed similarityResult
+	if err := json.Unmarshal([]byte(jsonOutput), &parsed); err != nil {
+		return nil, output, fmt.Errorf("parse songdup-similarity output: %w", err)
+	}
+
+	return parsed.Matches, output, nil
 }
 
 func runFPCalc(parent context.Context, filePath string) (audioFingerprint, string, error) {

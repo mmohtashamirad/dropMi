@@ -10,7 +10,7 @@ func main() {
 	if err := setLogLevel(cfg.LogLevel); err != nil {
 		log.Fatal(err)
 	}
-	configureMusicTools(cfg.RootPath, cfg.DockerMountPoint)
+	configureMusicTools(cfg.RootPath, cfg.DockerMountPoint, cfg.RootPath+"/"+cfg.AuthDBPath)
 
 	authDB, err := openAuthDB(cfg.RootPath + "/" + cfg.AuthDBPath)
 	if err != nil {

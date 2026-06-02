@@ -35,7 +35,7 @@ export function showResult(payload, isError) {
   setProgress(100);
   showScreen(elements.resultScreen);
   elements.resultFileName.textContent = payload.fileName ? `File: ${payload.fileName}` : "";
-  renderDuplicateNotice(payload.duplicate);
+  renderDuplicateNotice(payload.duplicates || []);
   renderComparisonTable(lastEyeD3Output, lastSongrecOutput);
   renderLyricsOptions(payload.lyricsOptions || []);
   clearResultError();
@@ -135,43 +135,60 @@ function renderComparisonTable(eyeD3Output, songrecOutput) {
   });
 }
 
-function renderDuplicateNotice(duplicate) {
+function renderDuplicateNotice(duplicates) {
   elements.duplicateNotice.innerHTML = "";
 
-  if (!duplicate) {
+  const matches = Array.isArray(duplicates) ? duplicates : [duplicates].filter(Boolean);
+  if (matches.length === 0) {
     elements.duplicateNotice.hidden = true;
     return;
   }
 
   const title = document.createElement("strong");
-  title.textContent = "Possible duplicate found";
+  title.textContent = matches.length === 1 ? "Possible duplicate found" : "Top similar songs";
   elements.duplicateNotice.appendChild(title);
 
-  const details = document.createElement("p");
-  const score = formatSimilarity(duplicate.similarity);
-  const fileName = duplicate.fileName || "an existing song";
+  const list = document.createElement("ol");
+  list.className = "duplicate-list";
+  matches.forEach((duplicate) => {
+    list.appendChild(createDuplicateItem(duplicate));
+  });
+  elements.duplicateNotice.appendChild(list);
+  elements.duplicateNotice.hidden = false;
+}
+
+function createDuplicateItem(duplicate) {
+  const item = document.createElement("li");
+  item.className = "duplicate-item";
+
+  const details = document.createElement("div");
+  details.className = "duplicate-details";
+
+  const fileName = document.createElement("span");
+  fileName.className = "duplicate-file-name";
+  fileName.textContent = duplicate.fileName || "Existing song";
+
+  const meta = document.createElement("span");
+  meta.className = "duplicate-meta";
   const duration = formatDuration(duplicate.duration);
-  details.textContent = [
-    `${fileName} matched with score ${score}`,
+  meta.textContent = [
+    `score ${formatSimilarity(duplicate.similarity)}`,
     duration ? `duration ${duration}` : ""
   ].filter(Boolean).join(" · ");
-  elements.duplicateNotice.appendChild(details);
+
+  details.append(fileName, meta);
+  item.appendChild(details);
 
   if (duplicate.relativePath) {
-    const playerLabel = document.createElement("p");
-    playerLabel.className = "duplicate-player-label";
-    playerLabel.textContent = "Existing song";
-    elements.duplicateNotice.appendChild(playerLabel);
-
     const player = document.createElement("audio");
     player.className = "duplicate-player";
     player.controls = true;
     player.preload = "metadata";
     player.src = `/song?${new URLSearchParams({ path: duplicate.relativePath }).toString()}`;
-    elements.duplicateNotice.appendChild(player);
+    item.appendChild(player);
   }
 
-  elements.duplicateNotice.hidden = false;
+  return item;
 }
 
 function renderLyricsOptions(options) {
