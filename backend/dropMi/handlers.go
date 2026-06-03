@@ -12,6 +12,10 @@ import (
 
 const maxUploadSize = 100 << 20
 
+// exactDuplicateMarkerSuffix names the sentinel file written next to an upload
+// when the library already contains a 100% match, so confirmation can reject it.
+const exactDuplicateMarkerSuffix = ".exsist"
+
 func trimMetadataValues(metadata map[string]string) {
 	for key, value := range metadata {
 		metadata[key] = strings.TrimSpace(value)
@@ -216,6 +220,12 @@ func (s *server) handleUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if hasExactDuplicate(duplicates) {
+		if err := os.WriteFile(tempPath+exactDuplicateMarkerSuffix, nil, 0o600); err != nil {
+			Warnf("write exact-duplicate marker for %q: %v", tempPath, err)
+		}
+	}
+
 	eyeD3Output, eyeD3Err := runEyeD3(r.Context(), tempPath)
 	if eyeD3Err != nil {
 		message := "eyeD3 could not analyze the file."
@@ -393,6 +403,15 @@ const (
 	duplicateMinSimilarityScore = 0.5
 )
 
+func hasExactDuplicate(duplicates []duplicateSong) bool {
+	for _, duplicate := range duplicates {
+		if duplicate.Similarity >= 0.9999 {
+			return true
+		}
+	}
+	return false
+}
+
 func (s *server) findDuplicateUpload(ctx context.Context, path string) ([]duplicateSong, error) {
 	matches, _, err := runSongDupSimilarity(ctx, path, duplicateMatchLimit, duplicateMinSimilarityScore)
 	if err != nil {
@@ -485,6 +504,13 @@ func (s *server) handleConfirm(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if _, err := os.Stat(sourcePath + exactDuplicateMarkerSuffix); err == nil {
+		writeJSON(w, http.StatusConflict, confirmResponse{
+			Error: "Can't add this file to the library because a song exactly like it already exists.",
+		})
+		return
+	}
+
 	var tempArtworkPath string
 	if artworkURL := req.SelectedMetadata["album_art"]; artworkURL != "" {
 		response, err := http.Head(artworkURL)
@@ -540,6 +566,13 @@ func (s *server) handleConfirm(w http.ResponseWriter, r *http.Request) {
 		Errorf("create final upload directory: %v", err)
 		writeJSON(w, http.StatusInternalServerError, confirmResponse{
 			Error: "Unable to prepare the final upload directory.",
+		})
+		return
+	}
+
+	if _, err := os.Stat(destinationPath); err == nil {
+		writeJSON(w, http.StatusConflict, confirmResponse{
+			Error: "A file with the same name already exists in the library.",
 		})
 		return
 	}
@@ -605,6 +638,8 @@ func (s *server) handleCancel(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
+
+	os.Remove(sourcePath + exactDuplicateMarkerSuffix)
 
 	Infof("deleted upload %q from temp storage", uploadID)
 	writeJSON(w, http.StatusOK, confirmResponse{
