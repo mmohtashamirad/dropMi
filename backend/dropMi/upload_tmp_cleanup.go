@@ -11,24 +11,24 @@ const (
 	uploadTmpMaxAge          = 24 * time.Hour
 )
 
-func startUploadTmpCleaner(path string) {
+func startUploadTmpCleaner(path string, events *eventStore) {
 	go func() {
 		ticker := time.NewTicker(uploadTmpCleanupInterval)
 		defer ticker.Stop()
 
 		for range ticker.C {
-			if err := cleanUploadTmpFiles(path); err != nil {
+			if err := cleanUploadTmpFiles(path, events); err != nil {
 				Errorf("clean upload temp dir: %v", err)
 			}
 		}
 	}()
 }
 
-func cleanUploadTmpFiles(path string) error {
-	return cleanOldUploadTmpFiles(path, time.Now().Add(-uploadTmpMaxAge))
+func cleanUploadTmpFiles(path string, events *eventStore) error {
+	return cleanOldUploadTmpFiles(path, time.Now().Add(-uploadTmpMaxAge), events)
 }
 
-func cleanOldUploadTmpFiles(rootPath string, cutoff time.Time) error {
+func cleanOldUploadTmpFiles(rootPath string, cutoff time.Time, events *eventStore) error {
 	return filepath.WalkDir(rootPath, func(path string, entry os.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -49,6 +49,7 @@ func cleanOldUploadTmpFiles(rootPath string, cutoff time.Time) error {
 			return err
 		}
 		Infof("deleted old upload temp file: %s", path)
+		events.record(eventCleanup, systemUser, path)
 		return nil
 	})
 }

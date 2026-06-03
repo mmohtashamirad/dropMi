@@ -18,6 +18,7 @@ type server struct {
 	uploadDir            string
 	authDB               *sql.DB
 	songs                *songStore
+	events               *eventStore
 	sessions             *sessionStore
 	authMethod           string
 	navidromeURL         string
@@ -26,12 +27,13 @@ type server struct {
 	jwtRefreshExpirySecs int
 }
 
-func newServer(cfg config, authDB *sql.DB, songs *songStore) *server {
+func newServer(cfg config, authDB *sql.DB, songs *songStore, events *eventStore) *server {
 	return &server{
 		uploadTmpDir:         cfg.UploadTmpDir,
 		uploadDir:            cfg.UploadDir,
 		authDB:               authDB,
 		songs:                songs,
+		events:               events,
 		sessions:             newSessionStore(authDB),
 		authMethod:           cfg.AuthMethod,
 		navidromeURL:         cfg.NavidromeURL,
@@ -68,8 +70,11 @@ func (s *server) routes() http.Handler {
 	return mux
 }
 
-func (s *server) listenAndServe(addr string) error {
-	return http.ListenAndServe(addr, s.routes())
+func (s *server) newHTTPServer(addr string) *http.Server {
+	return &http.Server{
+		Addr:    addr,
+		Handler: s.routes(),
+	}
 }
 
 func (s *server) handleIndex(w http.ResponseWriter, r *http.Request) {

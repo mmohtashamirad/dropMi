@@ -2,8 +2,16 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 )
+
+const serverShutdownTimeout = 10 * time.Second
 
 func main() {
 	command, cfg := parseConfig()
@@ -30,10 +38,15 @@ func main() {
 		return
 	}
 
-	if err := cleanUploadTmpFiles(cfg.UploadTmpDir); err != nil {
+	events, err := newEventStore(authDB)
+	if err != nil {
 		log.Fatal(err)
 	}
-	startUploadTmpCleaner(cfg.UploadTmpDir)
+
+	if err := cleanUploadTmpFiles(cfg.UploadTmpDir, events); err != nil {
+		log.Fatal(err)
+	}
+	startUploadTmpCleaner(cfg.UploadTmpDir, events)
 
 	songs, err := newSongStore(authDB, cfg.UploadDir)
 	if err != nil {
@@ -43,7 +56,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	app := newServer(cfg, authDB, songs)
+	app := newServer(cfg, authDB, songs, events)
 
 	Infof("listening on http://localhost%s", cfg.Addr)
 	Infof("upload temp dir: %s", cfg.UploadTmpDir)
@@ -59,7 +72,32 @@ func main() {
 		Infof("root path: %s", cfg.RootPath)
 	}
 
-	if err := app.listenAndServe(cfg.Addr); err != nil {
+	httpServer := app.newHTTPServer(cfg.Addr)
+
+	serverErr := make(chan error, 1)
+	go func() {
+		if err := httpServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			serverErr <- err
+		}
+	}()
+	events.record(eventServerStart, systemUser, cfg.Addr)
+
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
+
+	select {
+	case err := <-serverErr:
+		events.record(eventServerStop, systemUser, err.Error())
 		log.Fatal(err)
+	case sig := <-stop:
+		Infof("received signal %s, shutting down", sig)
+	}
+
+	events.record(eventServerStop, systemUser, "")
+
+	ctx, cancel := context.WithTimeout(context.Background(), serverShutdownTimeout)
+	defer cancel()
+	if err := httpServer.Shutdown(ctx); err != nil {
+		Errorf("server shutdown: %v", err)
 	}
 }

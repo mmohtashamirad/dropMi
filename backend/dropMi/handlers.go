@@ -48,6 +48,7 @@ func (s *server) handleLogin(w http.ResponseWriter, r *http.Request) {
 
 	if !ok {
 		Warnf("failed login for username %q", req.Username)
+		s.events.record(eventLoginFailed, req.Username, "")
 		writeJSON(w, http.StatusUnauthorized, loginResponse{
 			Error: "Incorrect username or password.",
 		})
@@ -94,6 +95,7 @@ func (s *server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	Infof("login successful for username %q", req.Username)
+	s.events.record(eventLogin, req.Username, "")
 	writeJSON(w, http.StatusOK, loginResponse{
 		OK:       true,
 		Username: req.Username,
@@ -130,6 +132,8 @@ func (s *server) handleLogout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	username, _, _ := s.authenticatedUser(r)
+
 	// Revoke refresh token if present
 	if cookie, err := r.Cookie(refreshCookieName); err == nil {
 		if s.sessions != nil {
@@ -156,6 +160,7 @@ func (s *server) handleLogout(w http.ResponseWriter, r *http.Request) {
 	})
 
 	Infof("logout completed")
+	s.events.record(eventLogout, username, "")
 	writeJSON(w, http.StatusOK, loginResponse{
 		OK: true,
 	})
@@ -264,6 +269,8 @@ func (s *server) handleUpload(w http.ResponseWriter, r *http.Request) {
 	}
 
 	Infof("songrec analysis completed for %q", header.Filename)
+
+	s.events.record(eventUpload, username, header.Filename)
 
 	writeJSON(w, http.StatusOK, analyzeResponse{
 		UploadID:      filepath.Base(tempPath),
@@ -590,6 +597,12 @@ func (s *server) handleConfirm(w http.ResponseWriter, r *http.Request) {
 	}
 
 	Infof("moved upload %q to %s", uploadID, destinationPath)
+	confirmInfo, _ := json.Marshal(map[string]any{
+		"tmpPath":         sourcePath,
+		"destinationPath": destinationPath,
+		"metadata":        req.SelectedMetadata,
+	})
+	s.events.record(eventConfirm, username, string(confirmInfo))
 	writeJSON(w, http.StatusOK, confirmResponse{
 		FileName: filepath.Base(destinationPath),
 		Message:  "File moved to upload directory.",
@@ -642,6 +655,7 @@ func (s *server) handleCancel(w http.ResponseWriter, r *http.Request) {
 	os.Remove(sourcePath + exactDuplicateMarkerSuffix)
 
 	Infof("deleted upload %q from temp storage", uploadID)
+	s.events.record(eventCancel, username, uploadID)
 	writeJSON(w, http.StatusOK, confirmResponse{
 		Message: "Uploaded file deleted.",
 	})
