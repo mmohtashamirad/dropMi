@@ -178,6 +178,17 @@ export async function cancelUpload(uploadId) {
   );
 }
 
+// Best-effort cancel that survives page unload (window/tab close, refresh,
+// navigation). sendBeacon queues the POST without keeping the page alive and
+// sends the session cookie, so the server can delete the temp file.
+export function beaconCancelUpload(uploadId) {
+  if (!uploadId || typeof navigator === "undefined" || !navigator.sendBeacon) {
+    return;
+  }
+  const blob = new Blob([JSON.stringify({ uploadId })], { type: "application/json" });
+  navigator.sendBeacon("/cancel", blob);
+}
+
 export async function reShazam(uploadId) {
   return submitUploadAction(
     "/reshazam",

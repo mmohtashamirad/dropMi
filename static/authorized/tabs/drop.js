@@ -16,7 +16,7 @@ import {
   setDraggingState,
   showScreen
 } from "/authorized/screen-ui.js";
-import { cancelUpload, confirmUpload, findLyricsBySearchText, reShazam, uploadFile } from "/authorized/upload-client.js";
+import { beaconCancelUpload, cancelUpload, confirmUpload, findLyricsBySearchText, reShazam, uploadFile } from "/authorized/upload-client.js";
 
 let currentUploadId = "";
 let currentResultPayload = null;
@@ -28,6 +28,17 @@ let queuedFiles = [];
 let queueTotal = 0;
 let queueCompleted = 0;
 let currentAudioURL = "";
+
+// If the window/tab is closed (or refreshed/navigated away) while a finished
+// upload is awaiting confirmation on the result screen, cancel it so the
+// server's temp file is cleaned up — same as pressing Cancel.
+window.addEventListener("pagehide", () => {
+  if (currentUploadId) {
+    const uploadId = currentUploadId;
+    currentUploadId = "";
+    beaconCancelUpload(uploadId);
+  }
+});
 
 export function initTab() {
   elements.dropZone.addEventListener("dragenter", (event) => {
@@ -201,6 +212,11 @@ export function initTab() {
 function cleanupTab() {
   if (activeUpload) {
     activeUpload.abort();
+  }
+  // A finished upload waiting on the result screen still has a server temp
+  // file; cancel it on the way out, like pressing Cancel.
+  if (currentUploadId) {
+    cancelUpload(currentUploadId);
   }
   clearQueue();
   clearAudioPlayer();
