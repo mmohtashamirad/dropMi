@@ -207,15 +207,30 @@ function renderLyricsOptions(options) {
 
     const summary = document.createElement("summary");
     summary.className = "lyrics-summary";
+
     const summaryTitle = document.createElement("span");
     summaryTitle.className = "lyrics-summary-title";
-    summaryTitle.textContent = option.title || "Lyrics option";
+
+    // Radio lives in the always-visible summary so an option can be selected
+    // without expanding it. Stop its click from toggling the <details>.
+    const radio = document.createElement("input");
+    radio.type = "radio";
+    radio.name = "selected-lyrics-option";
+    radio.className = "lyrics-summary-radio";
+    // set initial radio value; for editable option we'll update on input
+    radio.value = JSON.stringify(option);
+    radio.addEventListener("click", (event) => event.stopPropagation());
+    summaryTitle.appendChild(radio);
+
+    const titleText = document.createElement("span");
+    titleText.textContent = option.title || "Lyrics option";
     if (option.lyricsStatus) {
       const status = document.createElement("span");
       status.className = `lyrics-status ${option.lyricsStatus.toLowerCase()}`;
       status.textContent = ` (${option.lyricsStatus})`;
-      summaryTitle.appendChild(status);
+      titleText.appendChild(status);
     }
+    summaryTitle.appendChild(titleText);
     summary.appendChild(summaryTitle);
 
     const duration = formatDuration(option.duration);
@@ -226,19 +241,6 @@ function renderLyricsOptions(options) {
       summary.appendChild(summaryDuration);
     }
     item.appendChild(summary);
-
-    const selectorRow = document.createElement("label");
-    selectorRow.className = "lyrics-selector";
-    const radio = document.createElement("input");
-    radio.type = "radio";
-    radio.name = "selected-lyrics-option";
-    // set initial radio value; for editable option we'll update on input
-    radio.value = JSON.stringify(option);
-    selectorRow.appendChild(radio);
-    const selectorText = document.createElement("span");
-    selectorText.textContent = "Use these lyrics";
-    selectorRow.appendChild(selectorText);
-    item.appendChild(selectorRow);
 
     const meta = document.createElement("p");
     meta.className = "lyrics-meta";
