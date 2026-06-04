@@ -486,6 +486,32 @@ h1 {
   font-variant-numeric: tabular-nums;
 }
 
+/* Keep every events column on one line; only the info cell (.event-info) wraps. */
+#events-table-wrap td {
+  white-space: nowrap;
+}
+
+.event-row {
+  cursor: pointer;
+}
+
+.event-row:hover td {
+  background: var(--library-surface);
+}
+
+/* Collapsed by default so long info (e.g. JSON) keeps rows short; clicking the
+   row toggles .event-row-expanded to reveal the full value. */
+.event-info {
+  max-height: 1.5em;
+  overflow: hidden;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.event-row-expanded .event-info {
+  max-height: none;
+}
+
 .library-filter {
   margin-bottom: 14px;
   width: 400px;

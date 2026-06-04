@@ -65,6 +65,21 @@ type librarySong struct {
 	UpdatedTime string  `json:"updatedTime"`
 }
 
+type eventItem struct {
+	ID        int64  `json:"id"`
+	Timestamp string `json:"timestamp"`
+	Type      string `json:"type"`
+	Username  string `json:"username"`
+	Info      string `json:"info"`
+}
+
+type eventsResponse struct {
+	Events []eventItem `json:"events"`
+	Total  int         `json:"total"`
+	Offset int         `json:"offset"`
+	Limit  int         `json:"limit"`
+}
+
 type librarySongsResponse struct {
 	Songs  []librarySong `json:"songs"`
 	Total  int           `json:"total"`

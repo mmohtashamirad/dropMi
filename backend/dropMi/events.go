@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -87,4 +88,69 @@ func (s *eventStore) record(eventType string, username string, info string) {
 
 func formatEventTime(t time.Time) string {
 	return t.UTC().Format(time.RFC3339Nano)
+}
+
+func (s *eventStore) listEventsPage(offset, limit int, filter string) ([]eventItem, int, error) {
+	if offset < 0 {
+		offset = 0
+	}
+	if limit < 0 {
+		limit = 0
+	}
+
+	where, whereArgs := buildEventFilter(filter)
+
+	var total int
+	if err := s.db.QueryRow(`SELECT COUNT(*) FROM events `+where, whereArgs...).Scan(&total); err != nil {
+		return nil, 0, fmt.Errorf("count events: %w", err)
+	}
+
+	events := make([]eventItem, 0)
+	if limit == 0 {
+		return events, total, nil
+	}
+
+	query := `
+		SELECT id, created_at, type, username, info
+		FROM events
+		` + where + `
+		ORDER BY id DESC
+		LIMIT ? OFFSET ?
+	`
+	args := append([]any{}, whereArgs...)
+	args = append(args, limit, offset)
+
+	rows, err := s.db.Query(query, args...)
+	if err != nil {
+		return nil, 0, fmt.Errorf("list events: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var event eventItem
+		if err := rows.Scan(&event.ID, &event.Timestamp, &event.Type, &event.Username, &event.Info); err != nil {
+			return nil, 0, fmt.Errorf("scan event: %w", err)
+		}
+		events = append(events, event)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, fmt.Errorf("iterate events: %w", err)
+	}
+
+	return events, total, nil
+}
+
+func buildEventFilter(filter string) (string, []any) {
+	filter = strings.TrimSpace(filter)
+	if filter == "" {
+		return "", nil
+	}
+
+	escaped := escapeSQLLike(filter)
+	pattern := "%" + strings.ToLower(escaped) + "%"
+	clause := `WHERE
+		lower(type)     LIKE ? ESCAPE '\' OR
+		lower(username) LIKE ? ESCAPE '\' OR
+		lower(info)     LIKE ? ESCAPE '\'`
+	return clause, []any{pattern, pattern, pattern}
 }

@@ -58,6 +58,7 @@ func (s *server) routes() http.Handler {
 	mux.HandleFunc("/user-tabs", s.handleUserTabs)
 	mux.HandleFunc("/tab-content", s.handleTabContent)
 	mux.HandleFunc("/library-songs", s.handleLibrarySongs)
+	mux.HandleFunc("/events", s.handleEvents)
 	mux.HandleFunc("/refresh", s.handleRefresh)
 	mux.HandleFunc("/logout", s.handleLogout)
 	mux.HandleFunc("/upload", s.handleUpload)
@@ -163,6 +164,54 @@ func (s *server) handleLibrarySongs(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (s *server) handleEvents(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.Header().Set("Allow", http.MethodGet)
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	_, isAdmin, ok := s.authenticatedUser(r)
+	if !ok {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+	if !isAdmin {
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return
+	}
+
+	offset := parseLibraryPageParam(r.URL.Query().Get("offset"), 0)
+	if offset < 0 {
+		offset = 0
+	}
+	limit := parseLibraryPageParam(r.URL.Query().Get("limit"), librarySongsPageDefaultLimit)
+	if limit <= 0 {
+		limit = librarySongsPageDefaultLimit
+	}
+	if limit > librarySongsPageMaxLimit {
+		limit = librarySongsPageMaxLimit
+	}
+
+	filter := r.URL.Query().Get("q")
+
+	events, total, err := s.events.listEventsPage(offset, limit, filter)
+	if err != nil {
+		Errorf("list events: %v", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{
+			"error": "Unable to load events.",
+		})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, eventsResponse{
+		Events: events,
+		Total:  total,
+		Offset: offset,
+		Limit:  limit,
+	})
+}
+
 func parseLibraryPageParam(raw string, fallback int) int {
 	if raw == "" {
 		return fallback
@@ -225,7 +274,7 @@ func allTabs() []tabItem {
 	return []tabItem{
 		{Key: "drop", Title: "Drop", AdminOnly: false},
 		{Key: "song_lib", Title: "Song Library", AdminOnly: false},
-		{Key: "tab3", Title: "Tab3", AdminOnly: true},
+		{Key: "events", Title: "Events", AdminOnly: true},
 		{Key: "tab4", Title: "Tab4", AdminOnly: true},
 		{Key: "tab5", Title: "Tab5", AdminOnly: true},
 		{Key: "tab6", Title: "Tab6", AdminOnly: true},

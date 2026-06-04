@@ -1,0 +1,62 @@
+        <div class="library-view screen screen-active">
+          <div class="library-header">
+            <div>
+              <p class="eyebrow">dropMi</p>
+              <h1 class="library-title">Events</h1>
+            </div>
+            <div class="library-count" id="events-count">Loading...</div>
+          </div>
+
+          <div class="library-filter">
+            <input
+              type="search"
+              class="library-filter-input"
+              id="events-filter-input"
+              placeholder="Filter by type, user, or info"
+              autocomplete="off"
+              spellcheck="false"
+            />
+          </div>
+
+          <div class="library-state" id="events-state" hidden></div>
+
+          <div class="library-pagination" id="events-pagination" hidden>
+            <button type="button" class="secondary-button" id="events-prev" disabled>Previous</button>
+            <span class="library-page-info">
+              Page
+              <input
+                type="number"
+                class="library-page-input"
+                id="events-page-input"
+                min="1"
+                step="1"
+                value="1"
+                inputmode="numeric"
+              />
+              of <span id="events-page-total">1</span>
+            </span>
+            <select class="library-page-size" id="events-page-size" aria-label="Events per page">
+              <option value="5">5 per page</option>
+              <option value="25">25 per page</option>
+              <option value="50" selected>50 per page</option>
+              <option value="100">100 per page</option>
+            </select>
+            <button type="button" class="secondary-button" id="events-next" disabled>Next</button>
+          </div>
+
+          <div class="library-table-wrap" id="events-table-wrap" hidden>
+            <table class="library-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Date</th>
+                  <th>Time</th>
+                  <th>Type</th>
+                  <th>User</th>
+                  <th>Info</th>
+                </tr>
+              </thead>
+              <tbody id="events-table-body"></tbody>
+            </table>
+          </div>
+        </div>
