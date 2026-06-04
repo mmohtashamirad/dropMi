@@ -21,6 +21,15 @@ type leveledLogger struct {
 
 var logger = leveledLogger{level: levelInfo}
 
+// errorEventRecorder, when set, is invoked with every formatted ERROR message so
+// server errors can be persisted to the event log. It must not itself call
+// Errorf, to avoid recursion.
+var errorEventRecorder func(message string)
+
+func setErrorEventRecorder(record func(message string)) {
+	errorEventRecorder = record
+}
+
 func parseLogLevel(value string) (logLevel, error) {
 	switch strings.ToLower(strings.TrimSpace(value)) {
 	case "debug":
@@ -67,5 +76,9 @@ func Warnf(format string, args ...any) {
 }
 
 func Errorf(format string, args ...any) {
-	logger.logf(levelError, "ERROR", format, args...)
+	message := fmt.Sprintf(format, args...)
+	logger.logf(levelError, "ERROR", "%s", message)
+	if errorEventRecorder != nil {
+		errorEventRecorder(message)
+	}
 }

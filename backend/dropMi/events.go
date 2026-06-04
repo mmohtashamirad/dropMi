@@ -22,6 +22,7 @@ const (
 	eventConfirm     = "confirm"
 	eventCancel      = "cancel"
 	eventCleanup     = "cleanup"
+	eventError       = "error"
 )
 
 type eventStore struct {

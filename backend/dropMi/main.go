@@ -42,6 +42,9 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	setErrorEventRecorder(func(message string) {
+		events.record(eventError, systemUser, message)
+	})
 
 	if err := cleanUploadTmpFiles(cfg.UploadTmpDir, events); err != nil {
 		log.Fatal(err)
