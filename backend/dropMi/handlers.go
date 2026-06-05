@@ -661,6 +661,33 @@ func (s *server) handleCancel(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (s *server) handleUploadAudio(w http.ResponseWriter, r *http.Request) {
+	username, ok := s.requireAuth(w, r)
+	if !ok {
+		return
+	}
+
+	if r.Method != http.MethodGet {
+		w.Header().Set("Allow", http.MethodGet)
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	uploadID, err := validateUploadID(r.URL.Query().Get("uploadId"))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	sourcePath := tempUploadPath(s.uploadTmpDir, username, uploadID)
+	if info, err := os.Stat(sourcePath); err != nil || info.IsDir() {
+		http.NotFound(w, r)
+		return
+	}
+
+	http.ServeFile(w, r, sourcePath)
+}
+
 func (s *server) handleSong(w http.ResponseWriter, r *http.Request) {
 	if _, ok := s.requireAuth(w, r); !ok {
 		return

@@ -111,6 +111,48 @@ export function highlightMissingRequiredRows() {
   return anyMissing;
 }
 
+// Capture the user's in-progress edits on the result screen (metadata cell
+// values, selected lyric option, and the custom-lyrics text) so they can be
+// restored after the tab DOM is rebuilt.
+export function captureResultEdits() {
+  const radios = [...elements.lyricsOptions.querySelectorAll('input[name="selected-lyrics-option"]')];
+  const customBox = elements.lyricsOptions.querySelector(".lyrics-edit-box");
+  return {
+    metadata: getSelectedMetadata(),
+    selectedLyricsIndex: radios.findIndex((radio) => radio.checked),
+    customLyricsText: customBox ? customBox.value : ""
+  };
+}
+
+// Re-apply edits captured by captureResultEdits. Must run after the comparison
+// table and lyrics options have been rendered.
+export function applyResultEdits(edits) {
+  if (!edits) {
+    return;
+  }
+
+  if (edits.metadata) {
+    elements.resultTableBody.querySelectorAll("[data-selected-tag]").forEach((input) => {
+      const tag = input.dataset.selectedTag;
+      if (Object.prototype.hasOwnProperty.call(edits.metadata, tag)) {
+        input.value = edits.metadata[tag];
+      }
+    });
+  }
+
+  const customBox = elements.lyricsOptions.querySelector(".lyrics-edit-box");
+  if (customBox && typeof edits.customLyricsText === "string") {
+    customBox.value = edits.customLyricsText;
+    // Let the existing input listener resync the radio's value with the text.
+    customBox.dispatchEvent(new Event("input"));
+  }
+
+  const radios = [...elements.lyricsOptions.querySelectorAll('input[name="selected-lyrics-option"]')];
+  if (edits.selectedLyricsIndex >= 0 && edits.selectedLyricsIndex < radios.length) {
+    radios[edits.selectedLyricsIndex].checked = true;
+  }
+}
+
 function renderComparisonTable(eyeD3Output, songrecOutput) {
   const eyeD3Data = extractEyeD3Fields(eyeD3Output);
   const songrecData = extractSongrecFields(songrecOutput);

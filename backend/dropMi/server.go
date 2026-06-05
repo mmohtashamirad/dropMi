@@ -66,6 +66,7 @@ func (s *server) routes() http.Handler {
 	mux.HandleFunc("/cancel", s.handleCancel)
 	mux.HandleFunc("/reshazam", s.handleReshazam)
 	mux.HandleFunc("/song", s.handleSong)
+	mux.HandleFunc("/upload-audio", s.handleUploadAudio)
 	mux.HandleFunc("/", s.handleIndex)
 
 	return mux

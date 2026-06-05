@@ -1,5 +1,7 @@
 import { elements } from "/authorized/dom.js";
 import {
+  applyResultEdits,
+  captureResultEdits,
   clearResultError,
   getSelectedLyricsOption,
   getSelectedMetadata,
@@ -28,17 +30,85 @@ let queuedFiles = [];
 let queueTotal = 0;
 let queueCompleted = 0;
 let currentAudioURL = "";
+let currentLyricsOptions = [];
+// Snapshot of the result screen taken when leaving the Drop tab, so returning
+// restores it instead of resetting.
+let preservedResult = null;
 
-// If the window/tab is closed (or refreshed/navigated away) while a finished
-// upload is awaiting confirmation on the result screen, cancel it so the
-// server's temp file is cleaned up — same as pressing Cancel.
+// Persist a pending result across page closes/reloads for up to 12h, so the
+// user can reopen and still confirm. The server keeps the temp file (its own
+// cleanup only removes files older than 24h); we cancel a stale one once the
+// stored entry expires.
+const RESULT_STORAGE_KEY = "dropmi:pending-result";
+const RESULT_STORAGE_TTL_MS = 12 * 60 * 60 * 1000;
+
+// If the window/tab is closing while a finished upload is on the result screen,
+// save it (latest edits included) so it can be restored on the next visit.
 window.addEventListener("pagehide", () => {
-  if (currentUploadId) {
-    const uploadId = currentUploadId;
-    currentUploadId = "";
-    beaconCancelUpload(uploadId);
+  if (currentUploadId && elements.resultScreen?.classList.contains("screen-active")) {
+    persistSnapshot(captureResultState());
   }
 });
+
+function persistSnapshot(snapshot) {
+  if (!snapshot || !snapshot.uploadId) {
+    return;
+  }
+  try {
+    const state = {
+      uploadId: snapshot.uploadId,
+      payload: snapshot.payload,
+      lyricsOptions: snapshot.lyricsOptions,
+      lyricsSearchText: snapshot.lyricsSearchText,
+      edits: snapshot.edits
+    };
+    localStorage.setItem(RESULT_STORAGE_KEY, JSON.stringify({ savedAt: Date.now(), state }));
+  } catch {
+    // localStorage may be unavailable or full; persistence is best-effort.
+  }
+}
+
+function loadStoredResult() {
+  let raw = null;
+  try {
+    raw = localStorage.getItem(RESULT_STORAGE_KEY);
+  } catch {
+    return null;
+  }
+  if (!raw) {
+    return null;
+  }
+
+  let parsed = null;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    clearStoredResult();
+    return null;
+  }
+
+  if (!parsed?.state?.uploadId) {
+    clearStoredResult();
+    return null;
+  }
+
+  if (Date.now() - (parsed.savedAt || 0) > RESULT_STORAGE_TTL_MS) {
+    // Expired: drop it and cancel the now-stale server temp file.
+    beaconCancelUpload(parsed.state.uploadId);
+    clearStoredResult();
+    return null;
+  }
+
+  return parsed.state;
+}
+
+function clearStoredResult() {
+  try {
+    localStorage.removeItem(RESULT_STORAGE_KEY);
+  } catch {
+    // ignore
+  }
+}
 
 export function initTab() {
   elements.dropZone.addEventListener("dragenter", (event) => {
@@ -201,28 +271,100 @@ export function initTab() {
     elements.cancelResultButton.click();
   });
 
-  showScreen(elements.dropScreen);
+  // Restore a same-session snapshot (kept in memory, includes the file queue),
+  // else a result persisted to localStorage on a previous visit (within 12h).
+  const snapshot = preservedResult || loadStoredResult();
+  preservedResult = null;
+  if (snapshot) {
+    restoreResultState(snapshot);
+  } else {
+    showScreen(elements.dropScreen);
+  }
 
   return {
-    beforeLeave: cleanupTab,
-    beforeLogout: cleanupTab
+    beforeLeave: handleTabLeave,
+    beforeLogout: handleLogout
   };
 }
 
-function cleanupTab() {
-  if (activeUpload) {
-    activeUpload.abort();
+// Leaving for another tab: if a finished upload is waiting on the result
+// screen, snapshot it so returning restores it (the temp file stays). Anything
+// else (mid-upload, drop screen) is just torn down.
+function handleTabLeave() {
+  if (currentUploadId && !activeUpload && elements.resultScreen.classList.contains("screen-active")) {
+    preservedResult = captureResultState();
+    // Keep the loaded audio so the player still has the file on return. We hold
+    // onto the object URL (don't revoke it) and re-attach it when restoring.
+    preservedResult.audioURL = currentAudioURL;
+    persistSnapshot(preservedResult);
+    dragDepth = 0;
+    return;
   }
-  // A finished upload waiting on the result screen still has a server temp
-  // file; cancel it on the way out, like pressing Cancel.
+  discardActiveUpload();
+}
+
+// Logging out ends the session, so cancel any pending temp file and drop state.
+function handleLogout() {
   if (currentUploadId) {
     cancelUpload(currentUploadId);
+  }
+  clearStoredResult();
+  preservedResult = null;
+  discardActiveUpload();
+}
+
+function discardActiveUpload() {
+  if (activeUpload) {
+    activeUpload.abort();
   }
   clearQueue();
   clearAudioPlayer();
   activeUpload = null;
   currentUploadId = "";
+  currentLyricsOptions = [];
   dragDepth = 0;
+}
+
+function captureResultState() {
+  return {
+    uploadId: currentUploadId,
+    payload: currentResultPayload,
+    lyricsOptions: currentLyricsOptions.slice(),
+    lyricsSearchText: elements.lyricsSearchInput.value,
+    edits: captureResultEdits(),
+    queueCompleted,
+    queueTotal,
+    pendingFiles: pendingFiles.slice(),
+    queuedFiles: queuedFiles.slice()
+  };
+}
+
+function restoreResultState(snapshot) {
+  currentUploadId = snapshot.uploadId;
+  currentResultPayload = snapshot.payload;
+  currentLyricsOptions = snapshot.lyricsOptions || [];
+  pendingFiles = snapshot.pendingFiles || [];
+  queuedFiles = snapshot.queuedFiles || [];
+  queueTotal = snapshot.queueTotal || 0;
+  queueCompleted = snapshot.queueCompleted || 0;
+
+  showResult(snapshot.payload || {}, Boolean(snapshot.payload?.error));
+  setLyricsOptions(currentLyricsOptions);
+  applyResultEdits(snapshot.edits);
+  elements.lyricsSearchInput.value = snapshot.lyricsSearchText || "";
+  elements.reshazamButton.disabled = !currentUploadId;
+  // Re-attach the audio. Within a session we keep the local object URL; after a
+  // full reload the blob is gone, so stream the still-present temp file back
+  // from the server by upload id.
+  if (snapshot.audioURL) {
+    currentAudioURL = snapshot.audioURL;
+    elements.audioPlayer.src = snapshot.audioURL;
+    elements.audioPlayer.load();
+  } else if (currentUploadId) {
+    elements.audioPlayer.src = `/upload-audio?${new URLSearchParams({ uploadId: currentUploadId }).toString()}`;
+    elements.audioPlayer.load();
+  }
+  updateQueueStatus();
 }
 
 function enqueueFiles(fileList) {
@@ -236,6 +378,9 @@ function enqueueFiles(fileList) {
   queueTotal = files.length;
   queueCompleted = 0;
   currentUploadId = "";
+  currentLyricsOptions = [];
+  preservedResult = null;
+  clearStoredResult();
   processNextFile();
 }
 
@@ -260,6 +405,7 @@ function startUpload(file) {
       activeUpload = null;
       currentUploadId = payload.uploadId || "";
       currentResultPayload = payload;
+      currentLyricsOptions = payload.lyricsOptions || [];
       updateQueueStatus();
       showResult(payload, false);
       elements.reshazamButton.disabled = !currentUploadId;
@@ -270,6 +416,7 @@ function startUpload(file) {
       activeUpload = null;
       currentUploadId = payload.uploadId || "";
       currentResultPayload = payload;
+      currentLyricsOptions = payload.lyricsOptions || [];
       updateQueueStatus();
       showResult(payload, true);
       elements.reshazamButton.disabled = !currentUploadId;
@@ -290,8 +437,10 @@ function startUpload(file) {
 }
 
 function finishResultAction() {
+  clearStoredResult();
   currentUploadId = "";
   currentResultPayload = null;
+  currentLyricsOptions = [];
   lyricsSearchRequestId += 1;
   resetResultScreen();
   elements.reshazamButton.disabled = true;
@@ -403,7 +552,8 @@ async function startLyricsSearch({ showMissingMetadataError }) {
     return;
   }
 
-  setLyricsOptions(result.payload?.lyricsOptions || []);
+  currentLyricsOptions = result.payload?.lyricsOptions || [];
+  setLyricsOptions(currentLyricsOptions);
   elements.findLyricsButton.disabled = false;
   elements.findLyricsButton.textContent = "Find lyrics";
   elements.reshazamButton.disabled = !currentUploadId;
