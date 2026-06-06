@@ -71,13 +71,14 @@ function trimSelectedMetadata(selectedMetadata) {
   return trimmed;
 }
 
-export async function confirmUpload(uploadId, selectedMetadata, selectedLyrics) {
+export async function confirmUpload(uploadId, selectedMetadata, selectedLyrics, forceUpload = false) {
   return submitUploadAction(
     "/confirm",
     {
       uploadId,
       selectedMetadata: trimSelectedMetadata(selectedMetadata),
-      selectedLyrics
+      selectedLyrics,
+      forceUpload: Boolean(forceUpload)
     },
     "The server could not move the file into the upload directory."
   );

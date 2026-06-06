@@ -3,6 +3,7 @@
   --bg-top: #121820;
   --bg-bottom: #243542;
   --panel: rgba(18, 24, 31, 0.9);
+  --panel-solid: #212f3feb;
   --panel-border: rgba(214, 226, 236, 0.16);
   --text: #edf3f6;
   --muted: #a8b6bf;
@@ -30,6 +31,7 @@ body[data-theme="light"] {
   --bg-top: #f7f3ea;
   --bg-bottom: #d8e6ef;
   --panel: rgba(255, 252, 246, 0.88);
+  --panel-solid: #eee4d0db;
   --panel-border: rgba(43, 60, 74, 0.14);
   --text: #21303a;
   --muted: #596973;
@@ -311,6 +313,25 @@ h1 {
 .action-row .primary-button,
 .action-row .secondary-button {
   margin-top: 28px;
+}
+
+/* OK held long enough to arm a force upload. */
+.primary-button.force-armed {
+  background: var(--danger);
+  box-shadow: 0 14px 30px rgba(157, 68, 57, 0.35);
+}
+
+/* On the result screen, keep the controls + lyrics header pinned to the top
+   while the lyric options scroll beneath them. top clears the fixed bars. */
+.result-sticky {
+  position: sticky;
+  top: 76px;
+  z-index: 5;
+  width: 100%;
+  background: var(--panel-solid);
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--panel-border);  
+  border-radius: 18px;
 }
 
 .audio-player {

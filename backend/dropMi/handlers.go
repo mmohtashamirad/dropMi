@@ -468,6 +468,7 @@ func (s *server) handleConfirm(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	_, isAdmin, _ := s.authenticatedUser(r)
 
 	if r.Method != http.MethodPost {
 		w.Header().Set("Allow", http.MethodPost)
@@ -482,6 +483,10 @@ func (s *server) handleConfirm(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
+
+	// Admins may force the upload through even when a duplicate or a same-named
+	// file already exists. Non-admins can never force.
+	force := req.ForceUpload && isAdmin
 
 	uploadID, err := validateUploadID(req.UploadID)
 	if err != nil {
@@ -577,11 +582,13 @@ func (s *server) handleConfirm(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if _, err := os.Stat(destinationPath); err == nil {
-		writeJSON(w, http.StatusConflict, confirmResponse{
-			Error: "A file with the same name already exists in the library.",
-		})
-		return
+	if !force {
+		if _, err := os.Stat(destinationPath); err == nil {
+			writeJSON(w, http.StatusConflict, confirmResponse{
+				Error: "A file with the same name already exists in the library.",
+			})
+			return
+		}
 	}
 
 	if err := os.Rename(sourcePath, destinationPath); err != nil {
@@ -592,15 +599,19 @@ func (s *server) handleConfirm(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// The temp file is gone; drop any duplicate marker that sat next to it.
+	os.Remove(sourcePath + exactDuplicateMarkerSuffix)
+
 	if err := s.songs.upsertFromFile(r.Context(), destinationPath); err != nil {
 		Warnf("index confirmed upload %s: %v", destinationPath, err)
 	}
 
-	Infof("moved upload %q to %s", uploadID, destinationPath)
+	Infof("moved upload %q to %s (force=%t)", uploadID, destinationPath, force)
 	confirmInfo, _ := json.Marshal(map[string]any{
 		"tmpPath":         sourcePath,
 		"destinationPath": destinationPath,
 		"metadata":        req.SelectedMetadata,
+		"force":           force,
 	})
 	s.events.record(eventConfirm, username, string(confirmInfo))
 	writeJSON(w, http.StatusOK, confirmResponse{

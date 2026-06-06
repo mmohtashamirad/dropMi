@@ -39,6 +39,10 @@ let preservedResult = null;
 let syncedLyrics = [];
 let syncedLyricsTimer = null;
 let lastShownLyricIndex = -1;
+// Holding OK for this long arms a force upload (admins only; enforced server-side).
+const FORCE_UPLOAD_HOLD_MS = 3000;
+let okHoldStart = 0;
+let okHoldTimer = null;
 
 // Persist a pending result across page closes/reloads for up to 12h, so the
 // user can reopen and still confirm. The server keeps the temp file (its own
@@ -179,7 +183,41 @@ export function initTab() {
     setupSyncedLyrics(getSelectedLyricsOption());
   });
 
+  // Press-and-hold OK arms a force upload. The red cue appears once the hold
+  // passes the threshold; the actual decision is the measured hold time.
+  const clearOkHold = () => {
+    if (okHoldTimer !== null) {
+      clearTimeout(okHoldTimer);
+      okHoldTimer = null;
+    }
+    if (elements.okButton.classList.contains("force-armed")) {
+      elements.okButton.classList.remove("force-armed");
+      elements.okButton.textContent = "OK";
+    }
+  };
+  elements.okButton.addEventListener("pointerdown", () => {
+    okHoldStart = Date.now();
+    clearOkHold();
+    okHoldTimer = setTimeout(() => {
+      elements.okButton.classList.add("force-armed");
+      elements.okButton.textContent = "Force OK";
+    }, FORCE_UPLOAD_HOLD_MS);
+  });
+  elements.okButton.addEventListener("pointerup", clearOkHold);
+  elements.okButton.addEventListener("pointerleave", () => {
+    okHoldStart = 0;
+    clearOkHold();
+  });
+  elements.okButton.addEventListener("pointercancel", () => {
+    okHoldStart = 0;
+    clearOkHold();
+  });
+
   elements.okButton.addEventListener("click", async () => {
+    const forceUpload = okHoldStart > 0 && Date.now() - okHoldStart >= FORCE_UPLOAD_HOLD_MS;
+    okHoldStart = 0;
+    clearOkHold();
+
     // Highlight any required empty rows (e.g. Language). If any missing, stop.
     const hasMissing = highlightMissingRequiredRows();
     if (hasMissing) {
@@ -190,13 +228,14 @@ export function initTab() {
 
     elements.okButton.disabled = true;
     elements.cancelResultButton.disabled = true;
-    elements.okButton.textContent = "Moving file...";
+    elements.okButton.textContent = forceUpload ? "Force uploading..." : "Moving file...";
 
     if (currentUploadId) {
       const confirmation = await confirmUpload(
         currentUploadId,
         metadata,
-        getSelectedLyricsOption()
+        getSelectedLyricsOption(),
+        forceUpload
       );
       if (!confirmation.ok) {
         renderConfirmError(confirmation.error);

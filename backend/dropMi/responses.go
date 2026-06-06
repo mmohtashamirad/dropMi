@@ -91,6 +91,7 @@ type confirmRequest struct {
 	UploadID         string            `json:"uploadId"`
 	SelectedMetadata map[string]string `json:"selectedMetadata,omitempty"`
 	SelectedLyrics   *lyricsOption     `json:"selectedLyrics,omitempty"`
+	ForceUpload      bool              `json:"forceUpload,omitempty"`
 }
 
 type reshazamRequest struct {

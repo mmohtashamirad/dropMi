@@ -38,28 +38,30 @@
             </table>
           </div>
           <div class="duplicate-notice" id="duplicate-notice" hidden></div>
-          <div class="action-row">
-            <button class="secondary-button" id="cancel-result-button" type="button">Cancel</button>
-            <button class="secondary-button" id="reshazam-button" type="button">Re-shazam</button>
-            <button class="primary-button" id="ok-button" type="button">OK</button>
+          <div class="result-sticky">
+            <div class="action-row">
+              <button class="secondary-button" id="cancel-result-button" type="button">Cancel</button>
+              <button class="secondary-button" id="reshazam-button" type="button">Re-shazam</button>
+              <button class="primary-button" id="ok-button" type="button">OK</button>
+            </div>
+            <audio class="audio-player" id="audio-player" controls preload="metadata"></audio>
+            <div class="synced-lyric-line" id="synced-lyric-line" hidden></div>
+            <div class="lyrics-search-row">
+                <input
+                class="lyrics-search-input"
+                id="lyrics-search-input"
+                type="text"
+                placeholder="Search lyrics"
+                autocomplete="off"
+                />
+                <button class="secondary-button" id="find-lyrics-button" type="button">Find lyrics</button>
+            </div>
           </div>
-          <audio class="audio-player" id="audio-player" controls preload="metadata"></audio>
-          <div class="synced-lyric-line" id="synced-lyric-line" hidden></div>
-          <div class="lyrics-search-row">
-            <input
-              class="lyrics-search-input"
-              id="lyrics-search-input"
-              type="text"
-              placeholder="Search lyrics"
-              autocomplete="off"
-            />
-            <button class="secondary-button" id="find-lyrics-button" type="button">Find lyrics</button>
-          </div>
-          <section class="lyrics-section" id="lyrics-section" hidden>
-            <div class="lyrics-section-header">
+          <div class="lyrics-section-header">
               <p class="eyebrow">Lyrics</p>
               <h2 class="lyrics-title">LRCLIB Options</h2>
-            </div>
+          </div>
+          <section class="lyrics-section" id="lyrics-section" hidden>
             <div class="lyrics-options" id="lyrics-options"></div>
           </section>
         </div>
