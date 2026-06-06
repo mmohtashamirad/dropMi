@@ -569,7 +569,49 @@ function createEditableCell(label, value) {
 
   input.type = "text";
   cell.appendChild(input);
+
+  if (label === "Language") {
+    cell.appendChild(createLanguageQuickPicks(input));
+  }
+
   return cell;
+}
+
+// ISO 639-2/T three-letter codes. Pressing a button fills the language box
+// with the standard code (matching the ID3 TLAN tag eyeD3 reads/writes).
+const LANGUAGE_QUICK_PICKS = [
+  { code: "N/A", name: "N/A" },
+  { code: "eng", name: "English" },
+  { code: "fas", name: "Farsi" },
+  { code: "spa", name: "Spanish" },
+  { code: "fra", name: "French" },
+  { code: "tha", name: "Thai" },
+  { code: "fin", name: "Finnish" },
+  { code: "zho", name: "Chinese" },
+  { code: "ind", name: "Indonesian" },
+  { code: "deu", name: "German" }
+];
+
+function createLanguageQuickPicks(input) {
+  const group = document.createElement("div");
+  group.className = "language-quick-picks";
+
+  LANGUAGE_QUICK_PICKS.forEach(({ code, name }) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "language-pick-btn";
+    button.textContent = code.toUpperCase();
+    button.title = name;
+    button.setAttribute("aria-label", name);
+    button.addEventListener("click", () => {
+      input.value = name;
+      // Reuse the input listener's behaviour (clears the required highlight).
+      input.dispatchEvent(new Event("input"));
+    });
+    group.appendChild(button);
+  });
+
+  return group;
 }
 
 function updateArtPreview(container, value) {
