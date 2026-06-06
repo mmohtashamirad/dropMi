@@ -67,6 +67,7 @@ func (s *server) routes() http.Handler {
 	mux.HandleFunc("/reshazam", s.handleReshazam)
 	mux.HandleFunc("/song", s.handleSong)
 	mux.HandleFunc("/upload-audio", s.handleUploadAudio)
+	mux.HandleFunc("/favicon.ico", s.handleFavicon)
 	mux.HandleFunc("/", s.handleIndex)
 
 	return mux
@@ -77,6 +78,10 @@ func (s *server) newHTTPServer(addr string) *http.Server {
 		Addr:    addr,
 		Handler: s.routes(),
 	}
+}
+
+func (s *server) handleFavicon(w http.ResponseWriter, r *http.Request) {
+	http.ServeFile(w, r, "./static/public/icon.svg")
 }
 
 func (s *server) handleIndex(w http.ResponseWriter, r *http.Request) {

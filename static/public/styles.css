@@ -52,6 +52,7 @@ body {
 }
 
 .panel {
+  position: relative;
   width: min(420px, 100%);
   min-height: 320px;
   padding: 48px 32px;
@@ -61,6 +62,23 @@ body {
   display: grid;
   place-items: center;
   text-align: center;
+}
+
+/* dropMi logo watermark behind the login text. */
+.panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: url("/public/dropMi_logo.svg");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: min(100%, 600px);
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.panel > * {
+  position: relative;
 }
 
 .eyebrow {

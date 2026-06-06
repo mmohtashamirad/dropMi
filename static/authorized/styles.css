@@ -190,6 +190,7 @@ body {
 }
 
 .drop-zone {
+  position: relative;
   width: 100%;
   min-height: 320px;
   border: 3px dashed var(--panel-border);
@@ -200,6 +201,23 @@ body {
     transform 180ms ease,
     border-color 180ms ease,
     box-shadow 180ms ease;
+}
+
+/* dropMi logo watermark behind the drop-zone text. */
+.drop-zone::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: url("/public/dropMi_logo.svg");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: min(60%, 600px);
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.drop-zone > * {
+  position: relative;
 }
 
 .drop-zone.is-dragging {
