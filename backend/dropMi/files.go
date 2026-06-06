@@ -62,6 +62,35 @@ func tempUploadPath(rootDir string, username string, uploadID string) string {
 	return filepath.Join(tempUserDir(rootDir, username), uploadID)
 }
 
+func failedUploadPath(rootDir string, username string, fileName string) string {
+	return filepath.Join(rootDir, userPathPart(username), fileName)
+}
+
+func copyFile(sourcePath string, destinationPath string) error {
+	if err := os.MkdirAll(filepath.Dir(destinationPath), 0o755); err != nil {
+		return err
+	}
+
+	src, err := os.Open(sourcePath)
+	if err != nil {
+		return err
+	}
+	defer src.Close()
+
+	dst, err := os.Create(destinationPath)
+	if err != nil {
+		return err
+	}
+
+	if _, err := io.Copy(dst, src); err != nil {
+		dst.Close()
+		os.Remove(destinationPath)
+		return err
+	}
+
+	return dst.Close()
+}
+
 func metadataDrivenUploadPath(rootDir string, username string, selectedMetadata map[string]string, sourcePath string, fallbackName string) string {
 	userPart := userPathPart(username)
 

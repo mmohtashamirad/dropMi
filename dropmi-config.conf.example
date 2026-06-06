@@ -17,6 +17,8 @@ docker_mount_point=/data
 # Music data paths (relative to root_path if set)
 upload_tmp_dir=tmp_upload
 upload_dir=upload
+# Directory where uploads that fail processing are kept (defaults to failed_upload)
+failed_upload_dir=failed_upload
 
 # Authentication database path
 auth_db=config/auth.db

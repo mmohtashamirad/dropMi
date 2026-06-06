@@ -64,6 +64,7 @@ func main() {
 	Infof("listening on http://localhost%s", cfg.Addr)
 	Infof("upload temp dir: %s", cfg.UploadTmpDir)
 	Infof("upload dir: %s", cfg.UploadDir)
+	Infof("failed upload dir: %s", cfg.FailedUploadDir)
 	Infof("auth db: %s", cfg.AuthDBPath)
 	Infof("auth method: %s", cfg.AuthMethod)
 	if cfg.AuthMethod == "navidrome" {

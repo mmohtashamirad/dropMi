@@ -82,7 +82,7 @@ func fragmentFileName(filePath string) string {
 	if ext == "" {
 		return filePath + ".frag"
 	}
-	return strings.TrimSuffix(filePath, ext) + "..frag" + ext
+	return strings.TrimSuffix(filePath, ext) + ".frag" + ext
 }
 
 func extractAudioFragment(parent context.Context, inputPath string, outputPath string, totalDuration float64) error {

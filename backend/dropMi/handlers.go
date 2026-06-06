@@ -389,6 +389,13 @@ func (s *server) handleReshazam(w http.ResponseWriter, r *http.Request) {
 			message = "songrec took too long to analyze the file."
 		}
 
+		failedPath := failedUploadPath(s.failedUploadDir, username, filepath.Base(sourcePath))
+		if copyErr := copyFile(sourcePath, failedPath); copyErr != nil {
+			Errorf("reshazam failed for %q: could not copy to failed upload dir: %v", uploadID, copyErr)
+		} else {
+			Errorf("reshazam failed for %q: copied file to %s", uploadID, failedPath)
+		}
+
 		writeJSON(w, http.StatusInternalServerError, analyzeResponse{
 			UploadID:      uploadID,
 			FileName:      filepath.Base(sourcePath),

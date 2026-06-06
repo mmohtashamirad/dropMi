@@ -16,6 +16,7 @@ const (
 type server struct {
 	uploadTmpDir         string
 	uploadDir            string
+	failedUploadDir      string
 	authDB               *sql.DB
 	songs                *songStore
 	events               *eventStore
@@ -31,6 +32,7 @@ func newServer(cfg config, authDB *sql.DB, songs *songStore, events *eventStore)
 	return &server{
 		uploadTmpDir:         cfg.UploadTmpDir,
 		uploadDir:            cfg.UploadDir,
+		failedUploadDir:      cfg.FailedUploadDir,
 		authDB:               authDB,
 		songs:                songs,
 		events:               events,

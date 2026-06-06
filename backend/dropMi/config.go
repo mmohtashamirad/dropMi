@@ -12,6 +12,7 @@ import (
 type config struct {
 	UploadTmpDir            string
 	UploadDir               string
+	FailedUploadDir         string
 	Addr                    string
 	AuthDBPath              string
 	AuthMethod              string
@@ -88,13 +89,19 @@ func parseConfig() (*commandConfig, config) {
 		log.Fatal("docker_mount_point must be set in the config file")
 	}
 
+	if cfg.FailedUploadDir == "" {
+		cfg.FailedUploadDir = "failed_upload"
+	}
+
 	cfg.RootPath = cleanPath(cfg.RootPath)
 	cfg.DockerMountPoint = cleanPath(cfg.DockerMountPoint)
 	cfg.UploadTmpDir = resolveDataPath(cfg.RootPath, cfg.UploadTmpDir)
 	cfg.UploadDir = resolveDataPath(cfg.RootPath, cfg.UploadDir)
+	cfg.FailedUploadDir = resolveDataPath(cfg.RootPath, cfg.FailedUploadDir)
 
 	ensureDir(cfg.UploadTmpDir, "upload tmp dir")
 	ensureDir(cfg.UploadDir, "upload dir")
+	ensureDir(cfg.FailedUploadDir, "failed upload dir")
 
 	return nil, cfg
 }
@@ -166,6 +173,8 @@ func readConfigFile(path string, cfg *config) error {
 			cfg.UploadTmpDir = value
 		case "upload_dir":
 			cfg.UploadDir = value
+		case "failed_upload_dir":
+			cfg.FailedUploadDir = value
 		case "addr":
 			cfg.Addr = value
 		case "auth_db":
