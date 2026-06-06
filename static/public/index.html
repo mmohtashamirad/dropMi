@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="/public/styles.css" />
   </head>
   <body data-theme="dark">
+    <div class="note-rain" aria-hidden="true"></div>
     <main class="page-shell">
       <section class="panel">
         <p class="eyebrow">dropMi</p>
@@ -22,6 +23,10 @@
       </section>
     </main>
 
+    <script type="module">
+      import { initNoteRain } from "/public/note-rain.js";
+      initNoteRain(document.querySelector(".note-rain"));
+    </script>
     <script type="module" src="/public/app.js"></script>
   </body>
 </html>

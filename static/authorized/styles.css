@@ -2,8 +2,8 @@
   color-scheme: dark;
   --bg-top: #121820;
   --bg-bottom: #243542;
-  --panel: rgba(18, 24, 31, 0.9);
-  --panel-solid: #212f3feb;
+  --panel: rgba(18, 24, 31, 0.7);
+  --panel-solid: #212f3fca;
   --panel-border: rgba(214, 226, 236, 0.16);
   --text: #edf3f6;
   --muted: #a8b6bf;
@@ -16,7 +16,7 @@
   --input-border: rgba(214, 226, 236, 0.18);
   --secondary-bg: rgba(255, 255, 255, 0.08);
   --secondary-text: #edf3f6;
-  --table-bg: rgba(10, 14, 18, 0.92);
+  --table-bg: rgba(10, 14, 18, 0.3);
   --table-text: #f4efe8;
   --table-header: #dbcdb9;
   --table-border: rgba(244, 239, 232, 0.12);
@@ -30,8 +30,8 @@ body[data-theme="light"] {
   color-scheme: light;
   --bg-top: #f7f3ea;
   --bg-bottom: #d8e6ef;
-  --panel: rgba(255, 252, 246, 0.88);
-  --panel-solid: #eee4d0db;
+  --panel: rgba(255, 252, 246, 0.68);
+  --panel-solid: #eee4d0c7;
   --panel-border: rgba(43, 60, 74, 0.14);
   --text: #21303a;
   --muted: #596973;
@@ -44,7 +44,7 @@ body[data-theme="light"] {
   --input-border: rgba(43, 60, 74, 0.18);
   --secondary-bg: #f0e5d5;
   --secondary-text: #21303a;
-  --table-bg: rgba(255, 255, 255, 0.75);
+  --table-bg: rgba(255, 255, 255, 0.2);
   --table-text: #21303a;
   --table-header: #596973;
   --table-border: rgba(43, 60, 74, 0.14);
