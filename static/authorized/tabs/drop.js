@@ -34,6 +34,11 @@ let currentLyricsOptions = [];
 // Snapshot of the result screen taken when leaving the Drop tab, so returning
 // restores it instead of resetting.
 let preservedResult = null;
+// Parsed [time, verse] pairs of the selected synced lyric, plus the 50ms poller
+// that shows the current line under the audio player.
+let syncedLyrics = [];
+let syncedLyricsTimer = null;
+let lastShownLyricIndex = -1;
 
 // Persist a pending result across page closes/reloads for up to 12h, so the
 // user can reopen and still confirm. The server keeps the temp file (its own
@@ -168,6 +173,12 @@ export function initTab() {
     }
   });
 
+  // When a lyric option is selected, track the song position and show the
+  // current synced line under the audio player.
+  elements.lyricsOptions.addEventListener("change", () => {
+    setupSyncedLyrics(getSelectedLyricsOption());
+  });
+
   elements.okButton.addEventListener("click", async () => {
     // Highlight any required empty rows (e.g. Language). If any missing, stop.
     const hasMissing = highlightMissingRequiredRows();
@@ -297,6 +308,9 @@ function handleTabLeave() {
     // onto the object URL (don't revoke it) and re-attach it when restoring.
     preservedResult.audioURL = currentAudioURL;
     persistSnapshot(preservedResult);
+    // Stop the lyric poller (the DOM is about to be torn down) without touching
+    // the kept audio URL; it restarts on return.
+    stopSyncedLyrics();
     dragDepth = 0;
     return;
   }
@@ -364,6 +378,7 @@ function restoreResultState(snapshot) {
     elements.audioPlayer.src = `/upload-audio?${new URLSearchParams({ uploadId: currentUploadId }).toString()}`;
     elements.audioPlayer.load();
   }
+  setupSyncedLyrics(getSelectedLyricsOption());
   updateQueueStatus();
 }
 
@@ -508,6 +523,7 @@ function setAudioPlayerFile(file) {
 }
 
 function clearAudioPlayer() {
+  stopSyncedLyrics();
   elements.audioPlayer.pause();
   elements.audioPlayer.removeAttribute("src");
   elements.audioPlayer.load();
@@ -515,6 +531,92 @@ function clearAudioPlayer() {
   if (currentAudioURL) {
     URL.revokeObjectURL(currentAudioURL);
     currentAudioURL = "";
+  }
+}
+
+// Parse LRC-style synced lyrics ("[mm:ss.xx] verse") into time-sorted
+// { time (seconds), text } pairs. A line may carry multiple time tags.
+function parseSyncedLyrics(text) {
+  if (typeof text !== "string" || !text.trim()) {
+    return [];
+  }
+
+  const tagPattern = /\[(\d{1,2}):(\d{1,2}(?:[.:]\d{1,3})?)\]/g;
+  const entries = [];
+
+  text.split(/\r?\n/).forEach((line) => {
+    tagPattern.lastIndex = 0;
+    const times = [];
+    let match;
+    let lastTagEnd = 0;
+    while ((match = tagPattern.exec(line)) !== null) {
+      const minutes = Number.parseInt(match[1], 10);
+      const seconds = Number.parseFloat(match[2].replace(":", "."));
+      if (!Number.isNaN(minutes) && !Number.isNaN(seconds)) {
+        times.push(minutes * 60 + seconds);
+      }
+      lastTagEnd = tagPattern.lastIndex;
+    }
+    if (times.length === 0) {
+      return;
+    }
+    const verse = line.slice(lastTagEnd).trim();
+    times.forEach((time) => entries.push({ time, text: verse }));
+  });
+
+  entries.sort((a, b) => a.time - b.time);
+  return entries;
+}
+
+function setupSyncedLyrics(option) {
+  syncedLyrics = parseSyncedLyrics(option?.syncedLyrics || "");
+  lastShownLyricIndex = -1;
+
+  if (syncedLyrics.length === 0) {
+    stopSyncedLyrics();
+    return;
+  }
+
+  elements.syncedLyricLine.hidden = false;
+  elements.syncedLyricLine.textContent = "";
+  if (syncedLyricsTimer === null) {
+    syncedLyricsTimer = setInterval(updateSyncedLyric, 50);
+  }
+  updateSyncedLyric();
+}
+
+function updateSyncedLyric() {
+  if (syncedLyrics.length === 0 || !elements.audioPlayer) {
+    return;
+  }
+
+  const position = elements.audioPlayer.currentTime || 0;
+  let index = -1;
+  for (let i = 0; i < syncedLyrics.length; i += 1) {
+    if (syncedLyrics[i].time <= position) {
+      index = i;
+    } else {
+      break;
+    }
+  }
+
+  if (index === lastShownLyricIndex) {
+    return;
+  }
+  lastShownLyricIndex = index;
+  elements.syncedLyricLine.textContent = index >= 0 ? syncedLyrics[index].text : "";
+}
+
+function stopSyncedLyrics() {
+  if (syncedLyricsTimer !== null) {
+    clearInterval(syncedLyricsTimer);
+    syncedLyricsTimer = null;
+  }
+  syncedLyrics = [];
+  lastShownLyricIndex = -1;
+  if (elements.syncedLyricLine) {
+    elements.syncedLyricLine.hidden = true;
+    elements.syncedLyricLine.textContent = "";
   }
 }
 

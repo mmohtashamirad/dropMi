@@ -14,6 +14,7 @@ const elementIds = {
   lyricsSearchInput: "lyrics-search-input",
   lyricsOptions: "lyrics-options",
   lyricsSection: "lyrics-section",
+  syncedLyricLine: "synced-lyric-line",
   logoutButton: "logout-button",
   okButton: "ok-button",
   panel: "tab-panel",

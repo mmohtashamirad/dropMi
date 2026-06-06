@@ -42,12 +42,12 @@ body[data-theme="light"] {
   --input-border: rgba(43, 60, 74, 0.18);
   --secondary-bg: #f0e5d5;
   --secondary-text: #21303a;
-  --table-bg: rgba(33, 48, 58, 0.92);
-  --table-text: #f4efe8;
-  --table-header: #d7cab7;
-  --table-border: rgba(244, 239, 232, 0.12);
-  --editable-bg: rgba(255, 255, 255, 0.06);
-  --editable-border: rgba(215, 202, 183, 0.25);
+  --table-bg: rgba(255, 255, 255, 0.75);
+  --table-text: #21303a;
+  --table-header: #596973;
+  --table-border: rgba(43, 60, 74, 0.14);
+  --editable-bg: rgba(255, 255, 255, 0.248);
+  --editable-border: rgba(24, 18, 8, 0.904);
   --body-glow: rgba(255, 255, 255, 0.7);
   --library-surface: #f1f3f5;
 }
@@ -317,6 +317,20 @@ h1 {
   display: block;
   width: min(760px, 100%);
   margin: 18px auto 0;
+}
+
+.synced-lyric-line {
+  width: min(760px, 100%);
+  margin: 10px auto 0;
+  min-height: 1.4em;
+  text-align: center;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.synced-lyric-line[hidden] {
+  display: none;
 }
 
 .lyrics-search-row {
