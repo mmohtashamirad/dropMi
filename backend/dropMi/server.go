@@ -280,7 +280,7 @@ func allTabs() []tabItem {
 		{Key: "tab5", Title: "Tab5", AdminOnly: true},
 		{Key: "tab6", Title: "Tab6", AdminOnly: true},
 		{Key: "tab7", Title: "Tab7", AdminOnly: true},
-		{Key: "tab8", Title: "Tab8", AdminOnly: true},
+		{Key: "whats_changed", Title: "What's Changed", AdminOnly: false},
 	}
 }
 
