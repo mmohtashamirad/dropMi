@@ -523,11 +523,13 @@ func (s *server) handleConfirm(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if _, err := os.Stat(sourcePath + exactDuplicateMarkerSuffix); err == nil {
-		writeJSON(w, http.StatusConflict, confirmResponse{
-			Error: "Can't add this file to the library because a song exactly like it already exists.",
-		})
-		return
+	if !force {
+		if _, err := os.Stat(sourcePath + exactDuplicateMarkerSuffix); err == nil {
+			writeJSON(w, http.StatusConflict, confirmResponse{
+				Error: "Can't add this file to the library because a song exactly like it already exists.",
+			})
+			return
+		}
 	}
 
 	var tempArtworkPath string
