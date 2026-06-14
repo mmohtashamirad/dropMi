@@ -386,6 +386,14 @@ func (s *songStore) deleteMissing(seen map[string]bool) error {
 	return nil
 }
 
+func (s *songStore) deleteByPath(path string) error {
+	_, err := s.db.Exec(`DELETE FROM songs WHERE path = ?`, path)
+	if err != nil {
+		return fmt.Errorf("delete song %s: %w", path, err)
+	}
+	return nil
+}
+
 func fingerprintHash(fingerprint string) string {
 	sum := sha256.Sum256([]byte(fingerprint))
 	return hex.EncodeToString(sum[:])

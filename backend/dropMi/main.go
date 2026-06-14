@@ -59,6 +59,8 @@ func main() {
 		log.Fatal(err)
 	}
 
+	startUploadDirWatcher(cfg.UploadDir, songs)
+
 	app := newServer(cfg, authDB, songs, events)
 
 	Infof("listening on http://localhost%s", cfg.Addr)

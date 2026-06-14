@@ -4,6 +4,8 @@ go 1.25.0
 
 require modernc.org/sqlite v1.47.0
 
+require github.com/fsnotify/fsnotify v1.10.1 // indirect
+
 require (
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/golang-jwt/jwt/v5 v5.1.0
