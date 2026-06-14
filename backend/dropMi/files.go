@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -60,6 +61,33 @@ func tempUserDir(rootDir string, username string) string {
 
 func tempUploadPath(rootDir string, username string, uploadID string) string {
 	return filepath.Join(tempUserDir(rootDir, username), uploadID)
+}
+
+// findFileByName searches for a file named fileName anywhere beneath rootDir
+// (at any depth) and returns its full path. Returns empty string if not found.
+// A missing rootDir counts as "not found".
+func findFileByName(rootDir string, fileName string) (string, error) {
+	var foundPath string
+	err := filepath.WalkDir(rootDir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			return nil
+		}
+		if d.Name() == fileName {
+			foundPath = path
+			return filepath.SkipAll
+		}
+		return nil
+	})
+	if errors.Is(err, fs.ErrNotExist) {
+		return "", nil
+	}
+	if err != nil {
+		return "", err
+	}
+	return foundPath, nil
 }
 
 func failedUploadPath(rootDir string, username string, fileName string) string {

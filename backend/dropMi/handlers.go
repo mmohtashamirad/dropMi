@@ -591,10 +591,25 @@ func (s *server) handleConfirm(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !force {
-		if _, err := os.Stat(destinationPath); err == nil {
+	existingPath, err := findFileByName(s.uploadDir, filepath.Base(destinationPath))
+	if err != nil {
+		Errorf("check existing file name: %v", err)
+		writeJSON(w, http.StatusInternalServerError, confirmResponse{
+			Error: "Unable to check the library for an existing file.",
+		})
+		return
+	}
+	if existingPath != "" {
+		if !force {
 			writeJSON(w, http.StatusConflict, confirmResponse{
 				Error: "A file with the same name already exists in the library.",
+			})
+			return
+		}
+		if err := os.Remove(existingPath); err != nil {
+			Errorf("remove existing file: %v", err)
+			writeJSON(w, http.StatusInternalServerError, confirmResponse{
+				Error: "Unable to remove the existing file.",
 			})
 			return
 		}
