@@ -39,6 +39,8 @@ let preservedResult = null;
 let syncedLyrics = [];
 let syncedLyricsTimer = null;
 let lastShownLyricIndex = -1;
+let lyricsDelayMs = 0; // Delay in milliseconds for synced lyrics sync
+
 // Holding OK for this long arms a force upload (admins only; enforced server-side).
 const FORCE_UPLOAD_HOLD_MS = 3000;
 let okHoldStart = 0;
@@ -225,6 +227,15 @@ export function initTab() {
     }
 
     const metadata = getSelectedMetadata();
+    let selectedLyrics = getSelectedLyricsOption();
+
+    // Apply delay to synced lyrics timestamps before saving
+    if (selectedLyrics && lyricsDelayMs !== 0) {
+      selectedLyrics = {
+        ...selectedLyrics,
+        syncedLyrics: applySyncedLyricsDelay(selectedLyrics.syncedLyrics || "", lyricsDelayMs)
+      };
+    }
 
     elements.okButton.disabled = true;
     elements.cancelResultButton.disabled = true;
@@ -234,7 +245,7 @@ export function initTab() {
       const confirmation = await confirmUpload(
         currentUploadId,
         metadata,
-        getSelectedLyricsOption(),
+        selectedLyrics,
         forceUpload
       );
       if (!confirmation.ok) {
@@ -284,6 +295,16 @@ export function initTab() {
     elements.reshazamButton.disabled = false;
     elements.reshazamButton.textContent = "Re-shazam";
   });
+
+  const lyricsDelayInput = document.getElementById("lyrics-delay-input");
+  if (lyricsDelayInput) {
+    lyricsDelayInput.addEventListener("input", () => {
+      const delaySecs = parseFloat(lyricsDelayInput.value) || 0;
+      lyricsDelayMs = delaySecs * 1000;
+      // Immediately update displayed lyric with new delay
+      updateSyncedLyric();
+    });
+  }
 
   elements.cancelResultButton.addEventListener("click", async () => {
     elements.cancelResultButton.disabled = true;
@@ -496,6 +517,11 @@ function finishResultAction() {
   currentResultPayload = null;
   currentLyricsOptions = [];
   lyricsSearchRequestId += 1;
+  lyricsDelayMs = 0;
+  const lyricsDelayInput = document.getElementById("lyrics-delay-input");
+  if (lyricsDelayInput) {
+    lyricsDelayInput.value = "0.00";
+  }
   resetResultScreen();
   elements.reshazamButton.disabled = true;
   elements.reshazamButton.textContent = "Re-shazam";
@@ -575,6 +601,34 @@ function clearAudioPlayer() {
 
 // Parse LRC-style synced lyrics ("[mm:ss.xx] verse") into time-sorted
 // { time (seconds), text } pairs. A line may carry multiple time tags.
+// Apply a delay (in milliseconds) to all timestamps in synced lyrics text.
+// Returns the modified lyrics text with adjusted timestamps.
+function applySyncedLyricsDelay(lyricsText, delayMs) {
+  if (!lyricsText || delayMs === 0) {
+    return lyricsText;
+  }
+
+  // Regex to match LRC timestamp lines: [MM:SS.CC] text
+  const timestampRegex = /^\[(\d{2}):(\d{2})\.(\d{2})\](.*)/gm;
+  const delaySeconds = delayMs / 1000;
+
+  return lyricsText.replace(timestampRegex, (match, minutes, seconds, centiseconds, text) => {
+    let totalSeconds = parseInt(minutes, 10) * 60 + parseInt(seconds, 10) + parseInt(centiseconds, 10) / 100;
+    totalSeconds += delaySeconds;
+
+    // Ensure time doesn't go negative
+    if (totalSeconds < 0) {
+      totalSeconds = 0;
+    }
+
+    const newMinutes = Math.floor(totalSeconds / 60);
+    const newSeconds = Math.floor(totalSeconds % 60);
+    const newCentiseconds = Math.round((totalSeconds % 1) * 100);
+
+    return `[${String(newMinutes).padStart(2, "0")}:${String(newSeconds).padStart(2, "0")}.${String(newCentiseconds).padStart(2, "0")}]${text}`;
+  });
+}
+
 function parseSyncedLyrics(text) {
   if (typeof text !== "string" || !text.trim()) {
     return [];
@@ -629,7 +683,7 @@ function updateSyncedLyric() {
     return;
   }
 
-  const position = elements.audioPlayer.currentTime || 0;
+  const position = (elements.audioPlayer.currentTime || 0) - (lyricsDelayMs / 1000);
   let index = -1;
   for (let i = 0; i < syncedLyrics.length; i += 1) {
     if (syncedLyrics[i].time <= position) {

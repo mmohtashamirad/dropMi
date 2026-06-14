@@ -719,6 +719,39 @@ h1 {
   line-height: 1.2;
 }
 
+.lyrics-delay-control {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 12px 0;
+  margin-bottom: 10px;
+  border-bottom: 1px solid var(--panel-border);
+}
+
+.lyrics-delay-control label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--table-text);
+  min-width: fit-content;
+}
+
+.lyrics-delay-control input {
+  flex: 1;
+  max-width: 120px;
+  padding: 6px 8px;
+  border: 1px solid var(--editable-border);
+  border-radius: 8px;
+  background: var(--editable-bg);
+  color: var(--table-text);
+  font: inherit;
+}
+
+.lyrics-delay-control input:focus {
+  outline: 2px solid rgba(230, 161, 110, 0.45);
+  outline-offset: 2px;
+}
+
 .lyrics-options {
   display: grid;
   gap: 10px;
