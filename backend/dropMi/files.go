@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 )
@@ -153,27 +153,11 @@ func lyricsPathForAudio(audioPath string) string {
 }
 
 func downloadArtwork(url string, destinationPath string) error {
-	response, err := http.Get(url)
-	if err != nil {
-		return fmt.Errorf("download artwork: %w", err)
-	}
-	defer response.Body.Close()
-
-	if response.StatusCode != http.StatusOK {
-		return fmt.Errorf("download artwork: unexpected status %s", response.Status)
-	}
-
-	outputFile, err := os.Create(destinationPath)
-	if err != nil {
-		return fmt.Errorf("create artwork file: %w", err)
-	}
-	defer outputFile.Close()
-
-	if _, err := io.Copy(outputFile, response.Body); err != nil {
+	cmd := exec.Command("wget", "-O", destinationPath, url)
+	if err := cmd.Run(); err != nil {
 		os.Remove(destinationPath)
-		return fmt.Errorf("save artwork file: %w", err)
+		return fmt.Errorf("download artwork with wget: %w", err)
 	}
-
 	return nil
 }
 
@@ -222,6 +206,7 @@ func sanitizePathPart(value string) string {
 		"<", "",
 		">", "",
 		"|", "-",
+		"'", "-",
 	)
 
 	value = replacer.Replace(value)
