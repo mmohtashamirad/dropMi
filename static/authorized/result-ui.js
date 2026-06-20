@@ -197,9 +197,36 @@ function renderComparisonTable(eyeD3Output, songrecOutput) {
   rows.forEach(([label, eyeD3Value, songrecValue]) => {
     const row = document.createElement("tr");
     row.appendChild(createTextCell(label));
-    row.appendChild(createValueCell(eyeD3Value));
-    row.appendChild(createValueCell(songrecValue));
-    row.appendChild(createEditableCell(label, songrecValue || ""));
+
+    const eyeD3Cell = createValueCell(eyeD3Value);
+    const songrecCell = createValueCell(songrecValue);
+    const editableCell = createEditableCell(label, songrecValue || "");
+    const editableInput = editableCell.querySelector("[data-selected-tag]");
+
+    // Make value cells clickable to copy their content to the editable cell
+    if (eyeD3Value && eyeD3Value !== "—") {
+      eyeD3Cell.className = "clickable-value-cell";
+      eyeD3Cell.addEventListener("click", () => {
+        if (editableInput && !editableInput.disabled) {
+          editableInput.value = eyeD3Value;
+          editableInput.dispatchEvent(new Event("input"));
+        }
+      });
+    }
+
+    if (songrecValue && songrecValue !== "—") {
+      songrecCell.className = "clickable-value-cell";
+      songrecCell.addEventListener("click", () => {
+        if (editableInput && !editableInput.disabled) {
+          editableInput.value = songrecValue;
+          editableInput.dispatchEvent(new Event("input"));
+        }
+      });
+    }
+
+    row.appendChild(eyeD3Cell);
+    row.appendChild(songrecCell);
+    row.appendChild(editableCell);
     elements.resultTableBody.appendChild(row);
   });
 }

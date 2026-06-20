@@ -653,6 +653,7 @@ h1 {
 .duplicate-notice {
   width: min(760px, 100%);
   margin-top: 18px;
+  margin-bottom: 8px;
   padding: 14px 16px;
   border: 1px solid rgba(224, 154, 98, 0.35);
   border-radius: 16px;
@@ -724,9 +725,7 @@ h1 {
   align-items: center;
   justify-content: center;
   gap: 12px;
-  padding: 12px 0;
-  margin-bottom: 10px;
-  border-bottom: 1px solid var(--panel-border);
+  padding: 12px 0 0 0;
 }
 
 .lyrics-delay-control label {
@@ -873,6 +872,15 @@ h1 {
   width: 120px;
   max-width: 100%;
   border-radius: 12px;
+}
+
+.clickable-value-cell {
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.clickable-value-cell:hover {
+  background-color: rgba(230, 161, 110, 0.12);
 }
 
 .editable-value {
