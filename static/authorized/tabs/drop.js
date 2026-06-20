@@ -11,7 +11,9 @@ import {
   setLyricsOptions,
   showResult,
   updateSongrecResult,
-  highlightMissingRequiredRows
+  highlightMissingRequiredRows,
+  loadAudioVolume,
+  saveAudioVolume
 } from "/authorized/result-ui.js";
 import {
   resetDropMessage,
@@ -185,6 +187,12 @@ export function initTab() {
   // current synced line under the audio player.
   elements.lyricsOptions.addEventListener("change", () => {
     setupSyncedLyrics(getSelectedLyricsOption());
+  });
+
+  // Load and persist audio player volume
+  elements.audioPlayer.volume = loadAudioVolume();
+  elements.audioPlayer.addEventListener("volumechange", () => {
+    saveAudioVolume(elements.audioPlayer.volume);
   });
 
   // Press-and-hold OK arms a force upload. The red cue appears once the hold
@@ -785,4 +793,5 @@ async function findDuplicatesInBackground(uploadId) {
 
   findingDuplicates = false;
   elements.okButton.disabled = false;
+  elements.okButton.textContent = "OK";
 }

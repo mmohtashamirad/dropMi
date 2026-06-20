@@ -459,7 +459,7 @@ func (s *server) handleReshazam(w http.ResponseWriter, r *http.Request) {
 
 const (
 	duplicateMatchLimit         = 5
-	duplicateMinSimilarityScore = 0.5
+	duplicateMinSimilarityScore = 0.1
 )
 
 func hasExactDuplicate(duplicates []duplicateSong) bool {

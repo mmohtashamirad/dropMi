@@ -73,13 +73,13 @@ def main():
     parser.add_argument(
         "--min-similarity",
         type=float,
-        default=0.5,
+        default=0.1,
         help="minimum similarity score [0,1] to report a match",
     )
     parser.add_argument(
         "--duration-window",
         type=float,
-        default=8.0,
+        default=20,
         help="only compare against songs within this many seconds of the query duration",
     )
     args = parser.parse_args()
