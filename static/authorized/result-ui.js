@@ -177,7 +177,7 @@ function renderComparisonTable(eyeD3Output, songrecOutput) {
   });
 }
 
-function renderDuplicateNotice(duplicates) {
+export function renderDuplicateNotice(duplicates) {
   elements.duplicateNotice.innerHTML = "";
 
   const matches = Array.isArray(duplicates) ? duplicates : [duplicates].filter(Boolean);

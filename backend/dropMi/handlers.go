@@ -214,23 +214,6 @@ func (s *server) handleUpload(w http.ResponseWriter, r *http.Request) {
 	}
 	Debugf("saved upload to %s", tempPath)
 
-	duplicates, err := s.findDuplicateUpload(r.Context(), tempPath)
-	if err != nil {
-		Errorf("fingerprint upload: %v", err)
-		writeJSON(w, http.StatusInternalServerError, analyzeResponse{
-			UploadID: filepath.Base(tempPath),
-			FileName: header.Filename,
-			Error:    "Unable to fingerprint the uploaded file for duplicate checking.",
-		})
-		return
-	}
-
-	if hasExactDuplicate(duplicates) {
-		if err := os.WriteFile(tempPath+exactDuplicateMarkerSuffix, nil, 0o600); err != nil {
-			Warnf("write exact-duplicate marker for %q: %v", tempPath, err)
-		}
-	}
-
 	eyeD3Output, eyeD3Err := runEyeD3(r.Context(), tempPath)
 	if eyeD3Err != nil {
 		message := "eyeD3 could not analyze the file."
@@ -241,7 +224,6 @@ func (s *server) handleUpload(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusInternalServerError, analyzeResponse{
 			UploadID:    filepath.Base(tempPath),
 			FileName:    header.Filename,
-			Duplicates:  duplicates,
 			EyeD3Output: eyeD3Output,
 			Error:       message,
 		})
@@ -260,7 +242,6 @@ func (s *server) handleUpload(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusInternalServerError, analyzeResponse{
 			UploadID:      filepath.Base(tempPath),
 			FileName:      header.Filename,
-			Duplicates:    duplicates,
 			EyeD3Output:   eyeD3Output,
 			SongrecOutput: songrecOutput,
 			Error:         message,
@@ -275,9 +256,73 @@ func (s *server) handleUpload(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, analyzeResponse{
 		UploadID:      filepath.Base(tempPath),
 		FileName:      header.Filename,
-		Duplicates:    duplicates,
 		EyeD3Output:   eyeD3Output,
 		SongrecOutput: songrecOutput,
+	})
+}
+
+func (s *server) handleFindDuplicates(w http.ResponseWriter, r *http.Request) {
+	username, ok := s.requireAuth(w, r)
+	if !ok {
+		return
+	}
+
+	if r.Method != http.MethodPost {
+		w.Header().Set("Allow", http.MethodPost)
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req struct {
+		UploadID string `json:"uploadId"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{
+			"error": "Unable to read request.",
+		})
+		return
+	}
+
+	uploadID, err := validateUploadID(req.UploadID)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	sourcePath := tempUploadPath(s.uploadTmpDir, username, uploadID)
+	if _, err := os.Stat(sourcePath); err != nil {
+		status := http.StatusInternalServerError
+		message := "Unable to find the uploaded file."
+		if errors.Is(err, os.ErrNotExist) {
+			status = http.StatusNotFound
+			message = "Uploaded file not found."
+		}
+
+		writeJSON(w, status, map[string]string{
+			"error": message,
+		})
+		return
+	}
+
+	duplicates, err := s.findDuplicateUpload(r.Context(), sourcePath)
+	if err != nil {
+		Errorf("find duplicates for %q: %v", uploadID, err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{
+			"error": "Unable to check for duplicates.",
+		})
+		return
+	}
+
+	if hasExactDuplicate(duplicates) {
+		if err := os.WriteFile(sourcePath+exactDuplicateMarkerSuffix, nil, 0o600); err != nil {
+			Warnf("write exact-duplicate marker for %q: %v", sourcePath, err)
+		}
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"duplicates": duplicates,
 	})
 }
 

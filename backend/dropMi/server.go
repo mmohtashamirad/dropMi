@@ -64,6 +64,7 @@ func (s *server) routes() http.Handler {
 	mux.HandleFunc("/refresh", s.handleRefresh)
 	mux.HandleFunc("/logout", s.handleLogout)
 	mux.HandleFunc("/upload", s.handleUpload)
+	mux.HandleFunc("/find-duplicates", s.handleFindDuplicates)
 	mux.HandleFunc("/confirm", s.handleConfirm)
 	mux.HandleFunc("/cancel", s.handleCancel)
 	mux.HandleFunc("/reshazam", s.handleReshazam)

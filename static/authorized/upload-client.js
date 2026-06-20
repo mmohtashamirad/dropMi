@@ -200,6 +200,26 @@ export async function reShazam(uploadId) {
   );
 }
 
+export async function findDuplicates(uploadId) {
+  const result = await postJSON(
+    "/find-duplicates",
+    { uploadId },
+    "The server could not check for duplicates."
+  );
+
+  if (result.ok) {
+    return {
+      ok: true,
+      duplicates: result.payload.duplicates
+    };
+  }
+
+  return {
+    ok: false,
+    error: result.error
+  };
+}
+
 async function submitUploadAction(url, body, fallbackError) {
   const result = await postJSON(url, body, fallbackError);
 

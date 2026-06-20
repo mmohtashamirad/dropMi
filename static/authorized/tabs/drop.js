@@ -6,6 +6,7 @@ import {
   getSelectedLyricsOption,
   getSelectedMetadata,
   renderConfirmError,
+  renderDuplicateNotice,
   resetResultScreen,
   setLyricsOptions,
   showResult,
@@ -18,7 +19,7 @@ import {
   setDraggingState,
   showScreen
 } from "/authorized/screen-ui.js";
-import { beaconCancelUpload, cancelUpload, confirmUpload, findLyricsBySearchText, reShazam, uploadFile } from "/authorized/upload-client.js";
+import { beaconCancelUpload, cancelUpload, confirmUpload, findDuplicates, findLyricsBySearchText, reShazam, uploadFile } from "/authorized/upload-client.js";
 
 let currentUploadId = "";
 let currentResultPayload = null;
@@ -40,6 +41,7 @@ let syncedLyrics = [];
 let syncedLyricsTimer = null;
 let lastShownLyricIndex = -1;
 let lyricsDelayMs = 0; // Delay in milliseconds for synced lyrics sync
+let findingDuplicates = false; // Track if duplicate check is in progress
 
 // Holding OK for this long arms a force upload (admins only; enforced server-side).
 const FORCE_UPLOAD_HOLD_MS = 3000;
@@ -486,6 +488,11 @@ function startUpload(file) {
       elements.reshazamButton.disabled = !currentUploadId;
       fillLyricsSearchInput();
       maybeStartLyricsSearch();
+
+      // Check for duplicates in the background
+      if (currentUploadId) {
+        findDuplicatesInBackground(currentUploadId);
+      }
     },
     onError(payload) {
       activeUpload = null;
@@ -759,4 +766,23 @@ function fillLyricsSearchInput() {
   elements.lyricsSearchInput.value = [metadata.artist, metadata.track_name]
     .filter(Boolean)
     .join(" ");
+}
+
+async function findDuplicatesInBackground(uploadId) {
+  findingDuplicates = true;
+  elements.okButton.disabled = true;  
+  elements.okButton.textContent = "Finding Similar songs...";
+
+  const result = await findDuplicates(uploadId);
+  if (result.ok && currentUploadId === uploadId) {
+    // Update the current result payload with duplicates
+    if (currentResultPayload) {
+      currentResultPayload.duplicates = result.duplicates;
+      // Render the updated duplicate notice
+      renderDuplicateNotice(result.duplicates || []);
+    }
+  }
+
+  findingDuplicates = false;
+  elements.okButton.disabled = false;
 }
