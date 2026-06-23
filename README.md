@@ -102,7 +102,7 @@ do this once on your computer from where you have the dockerfile:
 `docker build -t music-tools .`
 
 and to run the music-tools container manually:
-`docker run -d --name music-tools -v "$(pwd)/tmp/data:/data" music-tools sleep infinity`
+`docker run -d --name music-tools -v "$(pwd)/tmp/data:/data:z" music-tools sleep infinity`
 
 Then run the command below to get the shazam result:
 `docker exec music-tools songrec audio-file-to-recognized-song /data/dropMi-214817309.mp3`
