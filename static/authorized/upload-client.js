@@ -59,6 +59,43 @@ export function uploadFile(file, callbacks) {
   };
 }
 
+// Like uploadFile, but the bytes already live on the server (in the internet
+// song cache), so there's nothing to stream. We show the upload screen, set the
+// bar to 0 before the call and 100 after, then run the same success/error path.
+export async function uploadInternetSong(filename, callbacks) {
+  showScreen(elements.uploadScreen);
+  elements.uploadFileName.textContent = `Uploading ${filename}`;
+  setProgress(0);
+
+  try {
+    const result = await postJSON(
+      "/upload-internet-song",
+      { filename },
+      "The upload or analysis failed."
+    );
+
+    setProgress(100);
+
+    if (result.ok) {
+      callbacks.onSuccess(result.payload);
+      return;
+    }
+
+    callbacks.onError({
+      fileName: filename,
+      output: "",
+      error: result.error || "The upload or analysis failed."
+    });
+  } catch {
+    setProgress(100);
+    callbacks.onError({
+      fileName: filename,
+      output: "",
+      error: "The browser could not reach the server."
+    });
+  }
+}
+
 function trimSelectedMetadata(selectedMetadata) {
   const trimmed = {};
   if (!selectedMetadata) {

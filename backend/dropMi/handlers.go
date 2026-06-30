@@ -6,8 +6,10 @@ import (
 	"errors"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 const maxUploadSize = 100 << 20
@@ -166,6 +168,54 @@ func (s *server) handleLogout(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func analyzeUploadedFile(w http.ResponseWriter, ctx context.Context, tempPath, fileName, username string, events *eventStore) {
+	eyeD3Output, eyeD3Err := runEyeD3(ctx, tempPath)
+	if eyeD3Err != nil {
+		message := "eyeD3 could not analyze the file."
+		if errors.Is(eyeD3Err, context.DeadlineExceeded) {
+			message = "eyeD3 took too long to analyze the file."
+		}
+
+		writeJSON(w, http.StatusInternalServerError, analyzeResponse{
+			UploadID:    filepath.Base(tempPath),
+			FileName:    fileName,
+			EyeD3Output: eyeD3Output,
+			Error:       message,
+		})
+		return
+	}
+
+	Infof("eyeD3 analysis completed for %q", fileName)
+
+	songrecOutput, songrecErr := runSongRec(ctx, tempPath)
+	if songrecErr != nil {
+		message := "songrec could not analyze the file."
+		if errors.Is(songrecErr, context.DeadlineExceeded) {
+			message = "songrec took too long to analyze the file."
+		}
+
+		writeJSON(w, http.StatusInternalServerError, analyzeResponse{
+			UploadID:      filepath.Base(tempPath),
+			FileName:      fileName,
+			EyeD3Output:   eyeD3Output,
+			SongrecOutput: songrecOutput,
+			Error:         message,
+		})
+		return
+	}
+
+	Infof("songrec analysis completed for %q", fileName)
+
+	events.record(eventUpload, username, fileName)
+
+	writeJSON(w, http.StatusOK, analyzeResponse{
+		UploadID:      filepath.Base(tempPath),
+		FileName:      fileName,
+		EyeD3Output:   eyeD3Output,
+		SongrecOutput: songrecOutput,
+	})
+}
+
 func (s *server) handleUpload(w http.ResponseWriter, r *http.Request) {
 	username, ok := s.requireAuth(w, r)
 	if !ok {
@@ -214,51 +264,83 @@ func (s *server) handleUpload(w http.ResponseWriter, r *http.Request) {
 	}
 	Debugf("saved upload to %s", tempPath)
 
-	eyeD3Output, eyeD3Err := runEyeD3(r.Context(), tempPath)
-	if eyeD3Err != nil {
-		message := "eyeD3 could not analyze the file."
-		if errors.Is(eyeD3Err, context.DeadlineExceeded) {
-			message = "eyeD3 took too long to analyze the file."
-		}
+	analyzeUploadedFile(w, r.Context(), tempPath, header.Filename, username, s.events)
+}
 
-		writeJSON(w, http.StatusInternalServerError, analyzeResponse{
-			UploadID:    filepath.Base(tempPath),
-			FileName:    header.Filename,
-			EyeD3Output: eyeD3Output,
-			Error:       message,
+func (s *server) handleUploadInternetSong(w http.ResponseWriter, r *http.Request) {
+	username, ok := s.requireAuth(w, r)
+	if !ok {
+		return
+	}
+
+	if r.Method != http.MethodPost {
+		w.Header().Set("Allow", http.MethodPost)
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req struct {
+		Filename string `json:"filename"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, analyzeResponse{
+			Error: "Unable to read request.",
 		})
 		return
 	}
 
-	Infof("eyeD3 analysis completed for %q", header.Filename)
-
-	songrecOutput, songrecErr := runSongRec(r.Context(), tempPath)
-	if songrecErr != nil {
-		message := "songrec could not analyze the file."
-		if errors.Is(songrecErr, context.DeadlineExceeded) {
-			message = "songrec took too long to analyze the file."
-		}
-
-		writeJSON(w, http.StatusInternalServerError, analyzeResponse{
-			UploadID:      filepath.Base(tempPath),
-			FileName:      header.Filename,
-			EyeD3Output:   eyeD3Output,
-			SongrecOutput: songrecOutput,
-			Error:         message,
+	filename := strings.TrimSpace(req.Filename)
+	if filename == "" {
+		writeJSON(w, http.StatusBadRequest, analyzeResponse{
+			Error: "Filename cannot be empty.",
 		})
 		return
 	}
 
-	Infof("songrec analysis completed for %q", header.Filename)
+	// Prevent directory traversal
+	if strings.Contains(filename, "/") || strings.Contains(filename, "\\") || strings.HasPrefix(filename, ".") {
+		writeJSON(w, http.StatusBadRequest, analyzeResponse{
+			Error: "Invalid filename.",
+		})
+		return
+	}
 
-	s.events.record(eventUpload, username, header.Filename)
+	Infof("internet song upload request for %q from %q", filename, username)
 
-	writeJSON(w, http.StatusOK, analyzeResponse{
-		UploadID:      filepath.Base(tempPath),
-		FileName:      header.Filename,
-		EyeD3Output:   eyeD3Output,
-		SongrecOutput: songrecOutput,
-	})
+	// Get the cached file
+	cachedFilePath := filepath.Join(s.internetSongCache, filename)
+	if _, err := os.Stat(cachedFilePath); err != nil {
+		Warnf("internet song upload requested missing cached file %q: %v", filename, err)
+		writeJSON(w, http.StatusNotFound, analyzeResponse{
+			Error: "Cached file not found.",
+		})
+		return
+	}
+
+	// Create a temp file path
+	tempDir := tempUserDir(s.uploadTmpDir, username)
+	tempFile, tempPath, err := createTempUploadFile(tempDir, filename)
+	if err != nil {
+		Errorf("create temp file: %v", err)
+		writeJSON(w, http.StatusInternalServerError, analyzeResponse{
+			Error: "Unable to prepare the upload for analysis.",
+		})
+		return
+	}
+	tempFile.Close()
+
+	// Copy the cached file to temp location
+	if err := copyFile(cachedFilePath, tempPath); err != nil {
+		Errorf("copy cached file: %v", err)
+		writeJSON(w, http.StatusInternalServerError, analyzeResponse{
+			Error: "Unable to copy the file for analysis.",
+		})
+		return
+	}
+
+	Debugf("moved internet song to %s", tempPath)
+
+	analyzeUploadedFile(w, r.Context(), tempPath, filename, username, s.events)
 }
 
 func (s *server) handleFindDuplicates(w http.ResponseWriter, r *http.Request) {
@@ -843,4 +925,196 @@ func (s *server) authenticatedUser(r *http.Request) (string, bool, bool) {
 		return "", false, false
 	}
 	return username, isAdmin, true
+}
+
+func (s *server) handleInternetSongsSearch(w http.ResponseWriter, r *http.Request) {
+	_, ok := s.requireAuth(w, r)
+	if !ok {
+		return
+	}
+
+	if r.Method != http.MethodPost {
+		w.Header().Set("Allow", http.MethodPost)
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	if s.internetSongScript == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{
+			"error": "Server doesn't have search script.",
+		})
+		return
+	}
+
+	var req struct {
+		Query string `json:"query"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{
+			"error": "Unable to read search request.",
+		})
+		return
+	}
+
+	query := strings.TrimSpace(req.Query)
+	if query == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{
+			"error": "Search query cannot be empty.",
+		})
+		return
+	}
+
+	Infof("internet song search for %q", query)
+
+	// Run the search script
+	ctx, cancel := context.WithTimeout(r.Context(), 60*time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, "/bin/bash", s.internetSongScript, "search", query)
+	output, err := cmd.Output()
+	if err != nil {
+		Errorf("search songs: %v", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{
+			"error": "Unable to search songs.",
+		})
+		return
+	}
+
+	Debugf("internet song search for %q returned: %s", query, strings.TrimSpace(string(output)))
+
+	jsonOutput := strings.TrimSpace(string(output))
+	for _, line := range strings.Split(jsonOutput, "\n") {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "{") && strings.HasSuffix(line, "}") {
+			jsonOutput = line
+		}
+	}
+
+	var result map[string]interface{}
+	if err := json.Unmarshal([]byte(jsonOutput), &result); err != nil {
+		Errorf("parse search output: %v", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{
+			"error": "Unable to parse search results.",
+		})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, result)
+}
+
+func (s *server) handleInternetSongDownload(w http.ResponseWriter, r *http.Request) {
+	username, ok := s.requireAuth(w, r)
+	if !ok {
+		return
+	}
+
+	if r.Method != http.MethodPost {
+		w.Header().Set("Allow", http.MethodPost)
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	if s.internetSongScript == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{
+			"error": "Server doesn't have download script.",
+		})
+		return
+	}
+
+	var req struct {
+		DownloadCommand string `json:"download_command"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{
+			"error": "Unable to read download request.",
+		})
+		return
+	}
+
+	downloadCommand := strings.TrimSpace(req.DownloadCommand)
+	if downloadCommand == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{
+			"error": "Download command cannot be empty.",
+		})
+		return
+	}
+
+	Infof("internet song download requested by %q: %q", username, downloadCommand)
+
+	// Run the download script
+	ctx, cancel := context.WithTimeout(r.Context(), 300*time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, "/bin/bash", s.internetSongScript, "download", downloadCommand)
+	output, err := cmd.Output()
+	if err != nil {
+		Errorf("download song: %v", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{
+			"error": "Unable to download song.",
+		})
+		return
+	}
+
+	jsonOutput := strings.TrimSpace(string(output))
+	for _, line := range strings.Split(jsonOutput, "\n") {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "{") && strings.HasSuffix(line, "}") {
+			jsonOutput = line
+		}
+	}
+
+	var result map[string]interface{}
+	if err := json.Unmarshal([]byte(jsonOutput), &result); err != nil {
+		Errorf("parse download output: %v", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{
+			"error": "Unable to parse download results.",
+		})
+		return
+	}
+
+	Infof("internet song download completed for %q", downloadCommand)
+
+	// Record event
+	s.events.record(eventInternetSongDownload, username, downloadCommand)
+
+	writeJSON(w, http.StatusOK, result)
+}
+
+func (s *server) handleInternetSongCached(w http.ResponseWriter, r *http.Request) {
+	_, ok := s.requireAuth(w, r)
+	if !ok {
+		return
+	}
+
+	if r.Method != http.MethodGet {
+		w.Header().Set("Allow", http.MethodGet)
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Extract filename from URL path
+	filename := strings.TrimPrefix(r.URL.Path, "/internet-song-cached/")
+	if filename == "" || filename == r.URL.Path {
+		http.NotFound(w, r)
+		return
+	}
+
+	// Prevent directory traversal
+	if strings.Contains(filename, "/") || strings.Contains(filename, "\\") || strings.HasPrefix(filename, ".") {
+		Warnf("rejected cached internet song request with suspicious filename %q", filename)
+		http.NotFound(w, r)
+		return
+	}
+
+	filePath := filepath.Join(s.internetSongCache, filename)
+
+	// Verify the file exists
+	if _, err := os.Stat(filePath); err != nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	Debugf("serving cached internet song %q", filename)
+	w.Header().Set("Content-Type", "audio/mpeg")
+	http.ServeFile(w, r, filePath)
 }

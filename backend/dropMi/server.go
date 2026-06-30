@@ -17,6 +17,8 @@ type server struct {
 	uploadTmpDir         string
 	uploadDir            string
 	failedUploadDir      string
+	internetSongScript   string
+	internetSongCache    string
 	authDB               *sql.DB
 	songs                *songStore
 	events               *eventStore
@@ -33,6 +35,8 @@ func newServer(cfg config, authDB *sql.DB, songs *songStore, events *eventStore)
 		uploadTmpDir:         cfg.UploadTmpDir,
 		uploadDir:            cfg.UploadDir,
 		failedUploadDir:      cfg.FailedUploadDir,
+		internetSongScript:   cfg.InternetSongScript,
+		internetSongCache:    cfg.InternetSongCache,
 		authDB:               authDB,
 		songs:                songs,
 		events:               events,
@@ -64,7 +68,11 @@ func (s *server) routes() http.Handler {
 	mux.HandleFunc("/refresh", s.handleRefresh)
 	mux.HandleFunc("/logout", s.handleLogout)
 	mux.HandleFunc("/upload", s.handleUpload)
+	mux.HandleFunc("/upload-internet-song", s.handleUploadInternetSong)
 	mux.HandleFunc("/find-duplicates", s.handleFindDuplicates)
+	mux.HandleFunc("/internet-songs-search", s.handleInternetSongsSearch)
+	mux.HandleFunc("/internet-song-download", s.handleInternetSongDownload)
+	mux.HandleFunc("/internet-song-cached/", s.handleInternetSongCached)
 	mux.HandleFunc("/confirm", s.handleConfirm)
 	mux.HandleFunc("/cancel", s.handleCancel)
 	mux.HandleFunc("/reshazam", s.handleReshazam)
@@ -284,7 +292,7 @@ func allTabs() []tabItem {
 		{Key: "drop", Title: "Drop", AdminOnly: false},
 		{Key: "song_lib", Title: "Song Library", AdminOnly: false},
 		{Key: "events", Title: "Events", AdminOnly: true},
-		{Key: "tab4", Title: "Tab4", AdminOnly: true},
+		{Key: "search_internet_songs", Title: "Search Internet", AdminOnly: false},
 		{Key: "tab5", Title: "Tab5", AdminOnly: true},
 		{Key: "tab6", Title: "Tab6", AdminOnly: true},
 		{Key: "tab7", Title: "Tab7", AdminOnly: true},

@@ -76,24 +76,6 @@ Create-user only works when `auth_method=local`.
 After creating a user, the site now starts on a login screen.
 Only a correct username and password can access the upload UI.
 
-## Project Layout
-
-- `backend/dropMi/`: Go application source
-- `backend/dropMi/main.go`: startup entry point
-- `backend/dropMi/config.go`: command-line flags and directory setup
-- `backend/dropMi/server.go`: server construction and route registration
-- `backend/dropMi/handlers.go`: HTTP handlers
-- `backend/dropMi/auth.go`: SQLite auth and in-memory session logic
-- `backend/dropMi/run_command.go`: command execution on the server.
-- `backend/dropMi/files.go`: upload file helpers and path validation
-- `backend/dropMi/responses.go`: request/response types and JSON helper
-- `static/`: frontend files served by the Go server
-- `static/app.js`: frontend bootstrapping and event wiring
-- `static/dom.js`: shared DOM element references
-- `static/ui.js`: screen and result rendering helpers
-- `static/auth-client.js`: login and logout requests
-- `static/upload-client.js`: upload and upload-action requests
-- `static/api.js`: shared frontend request helpers
 
 
 ## Docker

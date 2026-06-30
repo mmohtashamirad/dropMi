@@ -14,16 +14,17 @@ import (
 const systemUser = "SYSTEM"
 
 const (
-	eventServerStart = "server_start"
-	eventServerStop  = "server_stop"
-	eventLogin       = "login"
-	eventLoginFailed = "login_failed"
-	eventLogout      = "logout"
-	eventUpload      = "upload"
-	eventConfirm     = "confirm"
-	eventCancel      = "cancel"
-	eventCleanup     = "cleanup"
-	eventError       = "error"
+	eventServerStart            = "server_start"
+	eventServerStop             = "server_stop"
+	eventLogin                  = "login"
+	eventLoginFailed            = "login_failed"
+	eventLogout                 = "logout"
+	eventUpload                 = "upload"
+	eventConfirm                = "confirm"
+	eventCancel                 = "cancel"
+	eventCleanup                = "cleanup"
+	eventError                  = "error"
+	eventInternetSongDownload   = "internet_song_download"
 )
 
 type eventStore struct {

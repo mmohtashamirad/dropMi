@@ -13,6 +13,8 @@ type config struct {
 	UploadTmpDir            string
 	UploadDir               string
 	FailedUploadDir         string
+	InternetSongScript      string
+	InternetSongCache       string
 	Addr                    string
 	AuthDBPath              string
 	AuthMethod              string
@@ -92,16 +94,21 @@ func parseConfig() (*commandConfig, config) {
 	if cfg.FailedUploadDir == "" {
 		cfg.FailedUploadDir = "failed_upload"
 	}
+	if cfg.InternetSongCache == "" {
+		cfg.InternetSongCache = "internet_song_cache"
+	}
 
 	cfg.RootPath = cleanPath(cfg.RootPath)
 	cfg.DockerMountPoint = cleanPath(cfg.DockerMountPoint)
 	cfg.UploadTmpDir = resolveDataPath(cfg.RootPath, cfg.UploadTmpDir)
 	cfg.UploadDir = resolveDataPath(cfg.RootPath, cfg.UploadDir)
 	cfg.FailedUploadDir = resolveDataPath(cfg.RootPath, cfg.FailedUploadDir)
+	cfg.InternetSongCache = resolveDataPath(cfg.RootPath, cfg.InternetSongCache)
 
 	ensureDir(cfg.UploadTmpDir, "upload tmp dir")
 	ensureDir(cfg.UploadDir, "upload dir")
 	ensureDir(cfg.FailedUploadDir, "failed upload dir")
+	ensureDir(cfg.InternetSongCache, "internet song download cache dir")
 
 	return nil, cfg
 }
@@ -175,6 +182,10 @@ func readConfigFile(path string, cfg *config) error {
 			cfg.UploadDir = value
 		case "failed_upload_dir":
 			cfg.FailedUploadDir = value
+		case "internet_song_script":
+			cfg.InternetSongScript = value
+		case "internet_song_cache":
+			cfg.InternetSongCache = value
 		case "addr":
 			cfg.Addr = value
 		case "auth_db":

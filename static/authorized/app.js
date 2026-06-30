@@ -71,6 +71,7 @@ function renderTabs(tabs) {
     button.className = "tab-button";
     button.type = "button";
     button.textContent = tab.title || tab.key;
+    button.id = `tab-${tab.key}`;
     button.dataset.tabKey = tab.key;
     button.setAttribute("role", "tab");
     button.setAttribute("aria-selected", "false");

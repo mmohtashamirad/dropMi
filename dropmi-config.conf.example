@@ -20,6 +20,13 @@ upload_dir=upload
 # Directory where uploads that fail processing are kept (defaults to failed_upload)
 failed_upload_dir=failed_upload
 
+# Path to the script to search and download song from internet
+# (defaults to empty)
+# internet_song_script=/path/to/internet_song.sh
+
+# Directory for internet songs download cache
+# internet_song_cache=internet_song_cache
+
 # Authentication database path
 auth_db=config/auth.db
 

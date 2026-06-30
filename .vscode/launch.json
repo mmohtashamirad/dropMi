@@ -9,20 +9,8 @@
       "program": "${workspaceFolder}/backend/dropMi",
       "cwd": "${workspaceFolder}",
       "args": [
-        "-root-path",
-        "${workspaceFolder}/tmp/data",
-        "-upload-tmp-dir",
-        "tmp_upload/",
-        "-upload-dir",
-        "upload/",
-        "-m",
-        "/data",
-        "-auth-db",
-        "config/auth.db",
-        "-log-level",
-        "debug",
-        "-addr",
-        ":8080"
+        "-config",
+        "${workspaceFolder}/tmp/data/config/dropMi.cfg"
       ]
     }
   ]

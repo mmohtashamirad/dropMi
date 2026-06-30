@@ -21,7 +21,7 @@ import {
   setDraggingState,
   showScreen
 } from "/authorized/screen-ui.js";
-import { beaconCancelUpload, cancelUpload, confirmUpload, findDuplicates, findLyricsBySearchText, reShazam, uploadFile } from "/authorized/upload-client.js";
+import { beaconCancelUpload, cancelUpload, confirmUpload, findDuplicates, findLyricsBySearchText, reShazam, uploadFile, uploadInternetSong } from "/authorized/upload-client.js";
 
 let currentUploadId = "";
 let currentResultPayload = null;
@@ -63,6 +63,15 @@ window.addEventListener("pagehide", () => {
   if (currentUploadId && elements.resultScreen?.classList.contains("screen-active")) {
     persistSnapshot(captureResultState());
   }
+});
+
+// Filename handed off from the internet song search DropMi button. The event
+// arrives while this tab is still loading (the search tab switches tabs, then
+// dispatches), so we stash it and let initTab start the upload once the drop
+// screen's DOM exists. This listener is module-level so it's always live.
+let pendingInternetSongFilename = null;
+document.addEventListener("internet-song-dropmi", (event) => {
+  pendingInternetSongFilename = event.detail?.filename || null;
 });
 
 function persistSnapshot(snapshot) {
@@ -352,14 +361,22 @@ export function initTab() {
     elements.cancelResultButton.click();
   });
 
-  // Restore a same-session snapshot (kept in memory, includes the file queue),
-  // else a result persisted to localStorage on a previous visit (within 12h).
-  const snapshot = preservedResult || loadStoredResult();
-  preservedResult = null;
-  if (snapshot) {
-    restoreResultState(snapshot);
+  // Arrived here from the internet song search DropMi button: start that upload
+  // and ignore any stored snapshot. Otherwise restore a same-session snapshot
+  // (kept in memory, includes the file queue), else a result persisted to
+  // localStorage on a previous visit (within 12h).
+  if (pendingInternetSongFilename) {
+    const filename = pendingInternetSongFilename;
+    pendingInternetSongFilename = null;
+    startInternetSongUpload(filename);
   } else {
-    showScreen(elements.dropScreen);
+    const snapshot = preservedResult || loadStoredResult();
+    preservedResult = null;
+    if (snapshot) {
+      restoreResultState(snapshot);
+    } else {
+      showScreen(elements.dropScreen);
+    }
   }
 
   return {
@@ -483,15 +500,21 @@ function processNextFile() {
   startUpload(nextFile);
 }
 
-function startUpload(file) {
+function startUpload(source, isInternetSong = false) {
   updateQueueStatus();
-  activeUpload = uploadFile(file, {
+  const callbacks = {
     onSuccess(payload) {
       activeUpload = null;
       currentUploadId = payload.uploadId || "";
       currentResultPayload = payload;
       currentLyricsOptions = payload.lyricsOptions || [];
       updateQueueStatus();
+      // Internet songs have no local File, so load the audio from the server by
+      // uploadId — the same way a page reload restores the player.
+      if (isInternetSong && currentUploadId) {
+        elements.audioPlayer.src = `/upload-audio?${new URLSearchParams({ uploadId: currentUploadId }).toString()}`;
+        elements.audioPlayer.load();
+      }
       showResult(payload, false);
       elements.reshazamButton.disabled = !currentUploadId;
       fillLyricsSearchInput();
@@ -523,7 +546,23 @@ function startUpload(file) {
       clearAudioPlayer();
       showScreen(elements.dropScreen);
     }
-  });
+  };
+
+  if (isInternetSong) {
+    uploadInternetSong(source, callbacks);
+  } else {
+    activeUpload = uploadFile(source, callbacks);
+  }
+}
+
+// Like a single-file drop, but the song already lives in the server's cache
+// (handed off from the internet song search tab). Mirrors processNextFile.
+function startInternetSongUpload(filename) {
+  clearStoredResult();
+  resetResultScreen();
+  resetUploadScreen();
+  elements.lyricsSearchInput.value = "";
+  startUpload(filename, true);
 }
 
 function finishResultAction() {
