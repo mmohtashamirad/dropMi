@@ -18,6 +18,8 @@ RUN make build
 
 FROM docker:28-cli
 
+RUN apk add --no-cache bash
+
 WORKDIR /app
 
 COPY --from=build /src/build/dropMi /app/dropMi

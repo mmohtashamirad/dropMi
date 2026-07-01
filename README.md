@@ -171,3 +171,33 @@ And to update the server to the latest changes:
 docker-compose -p dropMi -f /mnt/craid1/docker-containers/dropMi/docker/docker-compose.yml build --no-cache dropMi
 docker-compose -p dropMi -f /mnt/craid1/docker-containers/dropMi/docker/docker-compose.yml up -d
 ```
+
+## Internet Song Search docker when using dropMi in a docker
+Please note that the if you can not have symlink in dockers to point to somewhere in your host,
+as the symlinks will be resolved in the docker container not in your host. For example, this doesn't
+work if you run dropMi in a docker:
+
+```
+tree tmp/data/song_downloader/
+tmp/data/song_downloader/
+├── ahangify
+│   └── search.sh
+├── download_cache -> /home/milad/Downloads/telegram/using_telethon/tmp/downloads
+└── internet_song.sh -> /home/milad/mydevelopments/dropMi/tools/example_scripts/internet_song.sh
+```
+
+it should be like this, in which the whole data directory is mounted on dropMi docker and whole
+data/song_downloader/ahangify/tmp is mounted on song downloader docker:
+```
+tree data/song_downloader/
+data/song_downloader/
+├── ahangify
+│   └── tmp
+│       ├── adf.se.session
+│       ├── downloads  [11 entries exceeds filelimit, not opening dir]
+│       ├── log  [12 entries exceeds filelimit, not opening dir]
+│       └── milad.session
+├── download_cache -> ahangify/tmp/downloads/
+└── internet_song.sh
+
+```
