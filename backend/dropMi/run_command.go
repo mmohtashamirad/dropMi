@@ -38,15 +38,22 @@ func runEyeD3(parent context.Context, filePath string) (string, error) {
 	)
 }
 
+func runSongPreProcess(parent context.Context, filePath string) (string, error) {
+	return runMusicToolsCommand(
+		parent,
+		filePath,
+		"song-preprocess.sh",
+	)
+}
+
 func runSongRec(parent context.Context, filePath string) (string, error) {
 	// Get audio duration
-	fingerprint, _, err := runFPCalc(parent, filePath)
+	duration, err := probeAudioDuration(parent, filePath)
 	if err != nil {
 		return "", fmt.Errorf("get audio duration: %w", err)
 	}
 
 	// If the song is shorter than 15 seconds, use the whole file
-	duration := fingerprint.Duration
 	if duration <= 15 {
 		return runMusicToolsCommand(
 			parent,
@@ -107,6 +114,7 @@ func extractAudioFragment(parent context.Context, inputPath string, outputPath s
 		"-ss", fmt.Sprintf("%.2f", startTime),
 		"-i", musicToolsInputPath,
 		"-t", "15",
+		"-map", "0:a:0",
 		"-c", "copy",
 		"-y",
 		musicToolsOutputPath,
@@ -130,9 +138,45 @@ func extractAudioFragment(parent context.Context, inputPath string, outputPath s
 	return err
 }
 
-type audioFingerprint struct {
-	Duration    float64
-	Fingerprint string
+// probeAudioDuration returns the duration (in seconds) of the audio file using
+// ffprobe inside the music-tools container.
+func probeAudioDuration(parent context.Context, filePath string) (float64, error) {
+	ctx, cancel := context.WithTimeout(parent, 30*time.Second)
+	defer cancel()
+
+	musicToolsFilePath, err := musicToolsPath(filePath)
+	if err != nil {
+		return 0, err
+	}
+
+	cmd := exec.CommandContext(ctx, "docker", "exec", musicToolsContainerName, "ffprobe",
+		"-v", "error",
+		"-show_entries", "format=duration",
+		"-of", "default=nokey=1:noprint_wrappers=1",
+		musicToolsFilePath,
+	)
+
+	Debugf("running command: %q", cmd.Args)
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	if err := cmd.Run(); err != nil {
+		stderrText := strings.TrimSpace(stderr.String())
+		if stderrText != "" {
+			Errorf("ffprobe stderr: %s", stderrText)
+		}
+		return 0, err
+	}
+
+	duration, err := strconv.ParseFloat(strings.TrimSpace(stdout.String()), 64)
+	if err != nil {
+		return 0, fmt.Errorf("parse ffprobe duration: %w", err)
+	}
+
+	return duration, nil
 }
 
 type songIndexData struct {
@@ -218,34 +262,6 @@ func runSongDupSimilarity(parent context.Context, filePath string, limit int, mi
 	}
 
 	return parsed.Matches, output, nil
-}
-
-func runFPCalc(parent context.Context, filePath string) (audioFingerprint, string, error) {
-	output, err := runMusicToolsCommand(
-		parent,
-		filePath,
-		"fpcalc",
-		"-json",
-	)
-	if err != nil {
-		return audioFingerprint{}, output, err
-	}
-
-	var parsed struct {
-		Duration    float64 `json:"duration"`
-		Fingerprint string  `json:"fingerprint"`
-	}
-	if err := json.Unmarshal([]byte(output), &parsed); err != nil {
-		return audioFingerprint{}, output, fmt.Errorf("parse fpcalc output: %w", err)
-	}
-	if parsed.Fingerprint == "" {
-		return audioFingerprint{}, output, fmt.Errorf("fpcalc returned an empty fingerprint")
-	}
-
-	return audioFingerprint{
-		Duration:    parsed.Duration,
-		Fingerprint: parsed.Fingerprint,
-	}, output, nil
 }
 
 func applySelectedMetadataWithLyrics(parent context.Context, filePath string, selectedMetadata map[string]string, artworkPath string, lyricsPath string) (string, error) {

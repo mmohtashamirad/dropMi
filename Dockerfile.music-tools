@@ -23,7 +23,8 @@ RUN pip3 install --break-system-packages eyeD3 lrcup pyacoustid
 
 COPY scripts/music-tools/songdup-record /usr/local/bin/songdup-record
 COPY scripts/music-tools/songdup-similarity /usr/local/bin/songdup-similarity
-RUN chmod +x /usr/local/bin/songdup-record /usr/local/bin/songdup-similarity
+COPY scripts/music-tools/song-preprocess.sh /usr/local/bin/song-preprocess.sh
+RUN chmod +x /usr/local/bin/songdup-record /usr/local/bin/songdup-similarity /usr/local/bin/song-preprocess.sh
 
 WORKDIR /songs
 

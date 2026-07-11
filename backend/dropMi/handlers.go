@@ -170,6 +170,20 @@ func (s *server) handleLogout(w http.ResponseWriter, r *http.Request) {
 
 func (s *server) analyzeUploadedFile(w http.ResponseWriter, ctx context.Context, tempPath, fileName, username string, events *eventStore) {
 	uploadID := filepath.Base(tempPath)
+
+	// Do the Song Pre Process (spp)
+	sppOutput, sppErr := runSongPreProcess(ctx, tempPath)
+	if sppErr != nil {
+		Errorf("Song Pre process issue with %q: %v", fileName, sppErr)
+		writeJSON(w, http.StatusInternalServerError, analyzeResponse{
+			UploadID: uploadID,
+			FileName: fileName,
+			Error:    "Unable to pre rocess the song.",
+		})
+		return
+	}
+	Debugf("song-preprocess for %q: %s", fileName, strings.TrimSpace(sppOutput))
+
 	eyeD3Output, eyeD3Err := runEyeD3(ctx, tempPath)
 	if eyeD3Err != nil {
 		message := "eyeD3 could not analyze the file."
