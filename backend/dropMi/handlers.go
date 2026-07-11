@@ -168,7 +168,8 @@ func (s *server) handleLogout(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func analyzeUploadedFile(w http.ResponseWriter, ctx context.Context, tempPath, fileName, username string, events *eventStore) {
+func (s *server) analyzeUploadedFile(w http.ResponseWriter, ctx context.Context, tempPath, fileName, username string, events *eventStore) {
+	uploadID := filepath.Base(tempPath)
 	eyeD3Output, eyeD3Err := runEyeD3(ctx, tempPath)
 	if eyeD3Err != nil {
 		message := "eyeD3 could not analyze the file."
@@ -177,7 +178,7 @@ func analyzeUploadedFile(w http.ResponseWriter, ctx context.Context, tempPath, f
 		}
 
 		writeJSON(w, http.StatusInternalServerError, analyzeResponse{
-			UploadID:    filepath.Base(tempPath),
+			UploadID:    uploadID,
 			FileName:    fileName,
 			EyeD3Output: eyeD3Output,
 			Error:       message,
@@ -192,6 +193,13 @@ func analyzeUploadedFile(w http.ResponseWriter, ctx context.Context, tempPath, f
 		message := "songrec could not analyze the file."
 		if errors.Is(songrecErr, context.DeadlineExceeded) {
 			message = "songrec took too long to analyze the file."
+		}
+
+		failedPath := failedUploadPath(s.failedUploadDir, username, filepath.Base(tempPath))
+		if copyErr := copyFile(tempPath, failedPath); copyErr != nil {
+			Errorf("reshazam failed for %q: could not copy to failed upload dir: %v", uploadID, copyErr)
+		} else {
+			Errorf("reshazam failed for %q: copied file to %s", uploadID, failedPath)
 		}
 
 		writeJSON(w, http.StatusInternalServerError, analyzeResponse{
@@ -264,7 +272,7 @@ func (s *server) handleUpload(w http.ResponseWriter, r *http.Request) {
 	}
 	Debugf("saved upload to %s", tempPath)
 
-	analyzeUploadedFile(w, r.Context(), tempPath, header.Filename, username, s.events)
+	s.analyzeUploadedFile(w, r.Context(), tempPath, header.Filename, username, s.events)
 }
 
 func (s *server) handleUploadInternetSong(w http.ResponseWriter, r *http.Request) {
@@ -340,7 +348,7 @@ func (s *server) handleUploadInternetSong(w http.ResponseWriter, r *http.Request
 
 	Debugf("moved internet song to %s", tempPath)
 
-	analyzeUploadedFile(w, r.Context(), tempPath, filename, username, s.events)
+	s.analyzeUploadedFile(w, r.Context(), tempPath, filename, username, s.events)
 }
 
 func (s *server) handleFindDuplicates(w http.ResponseWriter, r *http.Request) {
@@ -514,13 +522,6 @@ func (s *server) handleReshazam(w http.ResponseWriter, r *http.Request) {
 		message := "songrec could not analyze the file."
 		if errors.Is(songrecErr, context.DeadlineExceeded) {
 			message = "songrec took too long to analyze the file."
-		}
-
-		failedPath := failedUploadPath(s.failedUploadDir, username, filepath.Base(sourcePath))
-		if copyErr := copyFile(sourcePath, failedPath); copyErr != nil {
-			Errorf("reshazam failed for %q: could not copy to failed upload dir: %v", uploadID, copyErr)
-		} else {
-			Errorf("reshazam failed for %q: copied file to %s", uploadID, failedPath)
 		}
 
 		writeJSON(w, http.StatusInternalServerError, analyzeResponse{
