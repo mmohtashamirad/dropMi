@@ -1,16 +1,13 @@
-
+#!/bin/bash
 case "$1" in
     search)
-        docker exec ahangify \
-            python3 ahangify_downloader.py \
-            -s /data/milad.session \
+        docker exec internet-song \
+            python3 internet_song.py \
             search "$2"
         ;;
     download)
-        docker exec ahangify \
-            python3 ahangify_downloader.py \
-            -s /data/milad.session \
-            -d /data/downloads/ \
+        docker exec internet-song  \
+            python3 internet_song.py \
             download "$2"
         ;;
     *)

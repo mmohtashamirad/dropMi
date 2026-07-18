@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -319,8 +320,10 @@ func (s *server) handleUploadInternetSong(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// Prevent directory traversal
-	if strings.Contains(filename, "/") || strings.Contains(filename, "\\") || strings.HasPrefix(filename, ".") {
+	// Resolve within the cache, allowing subdirectories but never escaping it.
+	cachedFilePath, err := safeUploadSongPath(s.internetSongCache, filename)
+	if err != nil {
+		Warnf("rejected internet song upload with suspicious filename %q", filename)
 		writeJSON(w, http.StatusBadRequest, analyzeResponse{
 			Error: "Invalid filename.",
 		})
@@ -329,8 +332,6 @@ func (s *server) handleUploadInternetSong(w http.ResponseWriter, r *http.Request
 
 	Infof("internet song upload request for %q from %q", filename, username)
 
-	// Get the cached file
-	cachedFilePath := filepath.Join(s.internetSongCache, filename)
 	if _, err := os.Stat(cachedFilePath); err != nil {
 		Warnf("internet song upload requested missing cached file %q: %v", filename, err)
 		writeJSON(w, http.StatusNotFound, analyzeResponse{
@@ -1061,11 +1062,26 @@ func (s *server) handleInternetSongDownload(w http.ResponseWriter, r *http.Reque
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, "/bin/bash", s.internetSongScript, "download", downloadCommand)
-	output, err := cmd.Output()
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	err := cmd.Run()
+	if stderrText := strings.TrimSpace(stderr.String()); stderrText != "" {
+		Warnf("download script stderr: %s", stderrText)
+	}
 	if err != nil {
 		Errorf("download song: %v", err)
 		writeJSON(w, http.StatusInternalServerError, map[string]string{
 			"error": "Unable to download song.",
+		})
+		return
+	}
+
+	output := stdout.Bytes()
+	if len(strings.TrimSpace(string(output))) == 0 {
+		Errorf("download script produced no output for %q", downloadCommand)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{
+			"error": "Download produced no result.",
 		})
 		return
 	}
@@ -1107,21 +1123,20 @@ func (s *server) handleInternetSongCached(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// Extract filename from URL path
-	filename := strings.TrimPrefix(r.URL.Path, "/internet-song-cached/")
-	if filename == "" || filename == r.URL.Path {
+	// Extract the (possibly nested) path from the URL, e.g. "ahangify/song.mp3".
+	name := strings.TrimPrefix(r.URL.Path, "/internet-song-cached/")
+	if name == "" || name == r.URL.Path {
 		http.NotFound(w, r)
 		return
 	}
 
-	// Prevent directory traversal
-	if strings.Contains(filename, "/") || strings.Contains(filename, "\\") || strings.HasPrefix(filename, ".") {
-		Warnf("rejected cached internet song request with suspicious filename %q", filename)
+	// Allow subdirectories of the cache but never escape it.
+	filePath, err := safeUploadSongPath(s.internetSongCache, name)
+	if err != nil {
+		Warnf("rejected cached internet song request with suspicious path %q", name)
 		http.NotFound(w, r)
 		return
 	}
-
-	filePath := filepath.Join(s.internetSongCache, filename)
 
 	// Verify the file exists
 	if _, err := os.Stat(filePath); err != nil {
@@ -1129,7 +1144,7 @@ func (s *server) handleInternetSongCached(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	Debugf("serving cached internet song %q", filename)
+	Debugf("serving cached internet song %q", name)
 	w.Header().Set("Content-Type", "audio/mpeg")
 	http.ServeFile(w, r, filePath)
 }

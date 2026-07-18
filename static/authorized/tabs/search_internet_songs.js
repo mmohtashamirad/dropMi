@@ -1,5 +1,6 @@
 import { elements } from "/authorized/dom.js";
 import { postJSON } from "/authorized/api.js";
+import { loadAudioVolume, saveAudioVolume } from "/authorized/result-ui.js";
 
 export function initTab() {
   const searchButton = document.getElementById("search-internet-button");
@@ -68,6 +69,8 @@ export function initTab() {
     resultsList.innerHTML = "";
 
     items.forEach((item) => {
+      if (!item.download_command)
+        return;
       const itemElement = createResultItem(item);
       resultsList.appendChild(itemElement);
     });
@@ -80,38 +83,100 @@ export function initTab() {
     const div = document.createElement("div");
     div.className = "search-internet-result-item";
 
+    // Thumbnail (falls back to a placeholder when the item has no image).
+    const thumb = document.createElement("div");
+    thumb.className = "search-internet-result-thumb";
+    const img = document.createElement("img");
+    img.src = item.image || "/authorized/no-photo-song.png";
+    img.alt = item.title || "";
+    img.loading = "lazy";
+    thumb.appendChild(img);
+    div.appendChild(thumb);
+
+    // Info column: platform, title, duration, other info, actions.
+    const info = document.createElement("div");
+    info.className = "search-internet-result-info";
+
+    if (item.platform) {
+      const platform = document.createElement("div");
+      platform.className = "search-internet-result-platform";
+      platform.textContent = item.platform;
+      info.appendChild(platform);
+    }
+
     const titleDiv = document.createElement("div");
     titleDiv.className = "search-internet-result-title";
     titleDiv.textContent = item.title || "Unknown Title";
+    info.appendChild(titleDiv);
 
-    const metaDiv = document.createElement("div");
-    metaDiv.className = "search-internet-result-meta";
-
+    // Duration plus any extra info (size, quality, ...) on a single line.
     const metaParts = [];
-    if (item.time) metaParts.push(`Duration: ${item.time}`);
-    if (item.size) metaParts.push(`Size: ${item.size}`);
-    if (item.quality) metaParts.push(`Quality: ${item.quality}kbps`);
+    if (item.time) metaParts.push(item.time);
+    if (item.size) metaParts.push(item.size);
+    if (item.quality) metaParts.push(`${item.quality}kbps`);
+    if (metaParts.length > 0) {
+      const metaDiv = document.createElement("div");
+      metaDiv.className = "search-internet-result-meta";
+      metaDiv.textContent = metaParts.join(" • ");
+      info.appendChild(metaDiv);
+    }
 
-    metaDiv.textContent = metaParts.join(" • ");
+    const actions = document.createElement("div");
+    actions.className = "search-internet-result-actions";
+    info.appendChild(actions);
 
-    div.appendChild(titleDiv);
-    div.appendChild(metaDiv);
+    div.appendChild(info);
 
-    // Add download button
+    // Actions depend on whether the song can be downloaded and if it's cached.
     if (item.download_command) {
-      const downloadBtn = document.createElement("button");
-      downloadBtn.className = "search-internet-download-btn";
-      downloadBtn.textContent = "Download";
-      downloadBtn.addEventListener("click", async () => {
-        await handleDownload(item, downloadBtn, div);
-      });
-      div.appendChild(downloadBtn);
+      if (item.is_cached) {
+        // Already on the server — show the finished state, as if the download
+        // had just completed.
+        showDownloadedState(item, actions);
+      } else {
+        actions.appendChild(createDownloadButton(item, actions));
+      }
     }
 
     return div;
   }
 
-  async function handleDownload(item, downloadBtn, itemDiv) {
+  function createDownloadButton(item, actions) {
+    const downloadBtn = document.createElement("button");
+    downloadBtn.className = "search-internet-download-btn";
+    downloadBtn.textContent = "Download";
+    downloadBtn.addEventListener("click", () => {
+      handleDownload(item, downloadBtn, actions);
+    });
+    return downloadBtn;
+  }
+
+  // Replace the actions area with the audio player + DropMi button for a song
+  // that lives in the server cache.
+  function renderDownloaded(actions, filename) {
+    actions.innerHTML = "";
+
+    const audioPlayer = document.createElement("audio");
+    audioPlayer.className = "search-internet-player";
+    audioPlayer.controls = true;
+    audioPlayer.src = `/internet-song-cached/${filename}`;
+    // Restore/persist volume, same as the drop result player.
+    audioPlayer.volume = loadAudioVolume();
+    audioPlayer.addEventListener("volumechange", () => {
+      saveAudioVolume(audioPlayer.volume);
+    });
+    actions.appendChild(audioPlayer);
+
+    const dropmiBtn = document.createElement("button");
+    dropmiBtn.className = "search-internet-dropmi-btn";
+    dropmiBtn.textContent = "DropMi";
+    dropmiBtn.addEventListener("click", () => {
+      handleDropMi(filename);
+    });
+    actions.appendChild(dropmiBtn);
+  }
+
+  async function handleDownload(item, downloadBtn, actions) {
     downloadBtn.disabled = true;
     downloadBtn.textContent = "Downloading...";
 
@@ -129,29 +194,39 @@ export function initTab() {
         return;
       }
 
-      // Remove download button
-      downloadBtn.remove();
-
-      // Add audio player
-      const audioPlayer = document.createElement("audio");
-      audioPlayer.className = "search-internet-player";
-      audioPlayer.controls = true;
-      audioPlayer.src = `/internet-song-cached/${result.payload.filename}`;
-
-      itemDiv.appendChild(audioPlayer);
-
-      // Add DropMi button
-      const dropmiBtn = document.createElement("button");
-      dropmiBtn.className = "search-internet-dropmi-btn";
-      dropmiBtn.textContent = "DropMi";
-      dropmiBtn.addEventListener("click", () => {
-        handleDropMi(result.payload.filename);
-      });
-      itemDiv.appendChild(dropmiBtn);
+      renderDownloaded(actions, result.payload.filename);
     } catch (error) {
       showStatus(`Error: ${error.message}`, "error");
       downloadBtn.disabled = false;
       downloadBtn.textContent = "Download";
+    }
+  }
+
+  // For a cached song, resolve its filename the same way a finished download
+  // does, then show the player + DropMi. Falls back to a download button.
+  async function showDownloadedState(item, actions) {
+    const loading = document.createElement("div");
+    loading.className = "search-internet-result-loading";
+    loading.textContent = "Loading…";
+    actions.appendChild(loading);
+
+    try {
+      const result = await postJSON(
+        "/internet-song-download",
+        { download_command: item.download_command },
+        "Unable to load cached song."
+      );
+
+      if (!result.ok) {
+        actions.innerHTML = "";
+        actions.appendChild(createDownloadButton(item, actions));
+        return;
+      }
+
+      renderDownloaded(actions, result.payload.filename);
+    } catch {
+      actions.innerHTML = "";
+      actions.appendChild(createDownloadButton(item, actions));
     }
   }
 
