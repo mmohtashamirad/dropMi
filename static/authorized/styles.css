@@ -1176,10 +1176,6 @@ h1 {
   margin-top: 4px;
 }
 
-.search-internet-result-loading {
-  font-size: 0.9rem;
-  color: var(--muted);
-}
 
 .search-internet-download-btn {
   padding: 8px 16px;

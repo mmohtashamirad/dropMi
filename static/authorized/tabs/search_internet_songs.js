@@ -202,28 +202,10 @@ export function initTab() {
     }
   }
 
-  // For a cached song, resolve its filename the same way a finished download
-  // does, then show the player + DropMi. Falls back to a download button.
   async function showDownloadedState(item, actions) {
-    const loading = document.createElement("div");
-    loading.className = "search-internet-result-loading";
-    loading.textContent = "Loading…";
-    actions.appendChild(loading);
 
     try {
-      const result = await postJSON(
-        "/internet-song-download",
-        { download_command: item.download_command },
-        "Unable to load cached song."
-      );
-
-      if (!result.ok) {
-        actions.innerHTML = "";
-        actions.appendChild(createDownloadButton(item, actions));
-        return;
-      }
-
-      renderDownloaded(actions, result.payload.filename);
+      renderDownloaded(actions, item.is_cached);
     } catch {
       actions.innerHTML = "";
       actions.appendChild(createDownloadButton(item, actions));
