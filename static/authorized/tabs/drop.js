@@ -11,10 +11,18 @@ import {
   setLyricsOptions,
   showResult,
   updateSongrecResult,
-  highlightMissingRequiredRows,
-  loadAudioVolume,
-  saveAudioVolume
+  highlightMissingRequiredRows
 } from "/authorized/result-ui.js";
+import {
+  setSongSource,
+  setSongSourceAndPlay,
+  setSongSourceFromFile,
+  clearAudioPlayer,
+  setLyricsDelay,
+  setupSyncedLyrics,
+  stopSyncedLyrics,
+  audioPlayerSetTitle
+} from "/authorized/audio-player.js";
 import {
   resetDropMessage,
   resetUploadScreen,
@@ -24,6 +32,7 @@ import {
 import { beaconCancelUpload, cancelUpload, confirmUpload, findDuplicates, findLyricsBySearchText, reShazam, uploadFile, uploadInternetSong } from "/authorized/upload-client.js";
 
 let currentUploadId = "";
+let currentFileName = "";
 let currentResultPayload = null;
 let dragDepth = 0;
 let activeUpload = null;
@@ -32,17 +41,10 @@ let pendingFiles = [];
 let queuedFiles = [];
 let queueTotal = 0;
 let queueCompleted = 0;
-let currentAudioURL = "";
 let currentLyricsOptions = [];
 // Snapshot of the result screen taken when leaving the Drop tab, so returning
 // restores it instead of resetting.
 let preservedResult = null;
-// Parsed [time, verse] pairs of the selected synced lyric, plus the 50ms poller
-// that shows the current line under the audio player.
-let syncedLyrics = [];
-let syncedLyricsTimer = null;
-let lastShownLyricIndex = -1;
-let lyricsDelayMs = 0; // Delay in milliseconds for synced lyrics sync
 let findingDuplicates = false; // Track if duplicate check is in progress
 
 // Holding OK for this long arms a force upload (admins only; enforced server-side).
@@ -80,6 +82,7 @@ function persistSnapshot(snapshot) {
   }
   try {
     const state = {
+      filename: snapshot.filename,
       uploadId: snapshot.uploadId,
       payload: snapshot.payload,
       lyricsOptions: snapshot.lyricsOptions,
@@ -198,12 +201,6 @@ export function initTab() {
     setupSyncedLyrics(getSelectedLyricsOption());
   });
 
-  // Load and persist audio player volume
-  elements.audioPlayer.volume = loadAudioVolume();
-  elements.audioPlayer.addEventListener("volumechange", () => {
-    saveAudioVolume(elements.audioPlayer.volume);
-  });
-
   // Press-and-hold OK arms a force upload. The red cue appears once the hold
   // passes the threshold; the actual decision is the measured hold time.
   const clearOkHold = () => {
@@ -249,6 +246,12 @@ export function initTab() {
     let selectedLyrics = getSelectedLyricsOption();
 
     // Apply delay to synced lyrics timestamps before saving
+    let lyricsDelayMs = 0;
+    const lyricsDelayInput = document.getElementById("lyrics-delay-input");
+    if (lyricsDelayInput) {
+      const delaySecs = parseFloat(lyricsDelayInput.value) || 0;
+      lyricsDelayMs = delaySecs * 1000;
+    }
     if (selectedLyrics && lyricsDelayMs !== 0) {
       selectedLyrics = {
         ...selectedLyrics,
@@ -325,6 +328,13 @@ export function initTab() {
     });
   }
 
+  elements.playResultButton.addEventListener("click", () => {
+    if (!currentUploadId) {
+      return;
+    }
+    setSongSourceAndPlay(`/uploaded-audio?${new URLSearchParams({ uploadId: currentUploadId }).toString()}`);
+  });
+
   elements.cancelResultButton.addEventListener("click", async () => {
     elements.cancelResultButton.disabled = true;
     elements.okButton.disabled = true;
@@ -391,13 +401,7 @@ export function initTab() {
 function handleTabLeave() {
   if (currentUploadId && !activeUpload && elements.resultScreen.classList.contains("screen-active")) {
     preservedResult = captureResultState();
-    // Keep the loaded audio so the player still has the file on return. We hold
-    // onto the object URL (don't revoke it) and re-attach it when restoring.
-    preservedResult.audioURL = currentAudioURL;
     persistSnapshot(preservedResult);
-    // Stop the lyric poller (the DOM is about to be torn down) without touching
-    // the kept audio URL; it restarts on return.
-    stopSyncedLyrics();
     dragDepth = 0;
     return;
   }
@@ -422,12 +426,14 @@ function discardActiveUpload() {
   clearAudioPlayer();
   activeUpload = null;
   currentUploadId = "";
+  currentFileName = "";
   currentLyricsOptions = [];
   dragDepth = 0;
 }
 
 function captureResultState() {
   return {
+    filename: currentFileName,
     uploadId: currentUploadId,
     payload: currentResultPayload,
     lyricsOptions: currentLyricsOptions.slice(),
@@ -454,18 +460,14 @@ function restoreResultState(snapshot) {
   applyResultEdits(snapshot.edits);
   elements.lyricsSearchInput.value = snapshot.lyricsSearchText || "";
   elements.reshazamButton.disabled = !currentUploadId;
-  // Re-attach the audio. Within a session we keep the local object URL; after a
-  // full reload the blob is gone, so stream the still-present temp file back
-  // from the server by upload id.
-  if (snapshot.audioURL) {
-    currentAudioURL = snapshot.audioURL;
-    elements.audioPlayer.src = snapshot.audioURL;
-    elements.audioPlayer.load();
-  } else if (currentUploadId) {
-    elements.audioPlayer.src = `/upload-audio?${new URLSearchParams({ uploadId: currentUploadId }).toString()}`;
-    elements.audioPlayer.load();
+  // Re-attach the audio. After a reload the blob is gone, so stream the temp file
+  // back from the server by upload id.
+  if (currentUploadId) {
+    setSongSource(`/uploaded-audio?${new URLSearchParams({ uploadId: currentUploadId }).toString()}`, getSelectedLyricsOption());
+    if (snapshot.filename) {
+      audioPlayerSetTitle(`Now Playing Dropped Song: ${snapshot.filename}`);
+    }
   }
-  setupSyncedLyrics(getSelectedLyricsOption());
   updateQueueStatus();
 }
 
@@ -493,10 +495,12 @@ function processNextFile() {
     return;
   }
 
+  currentFileName = nextFile.name;
   resetResultScreen();
   resetUploadScreen();
   elements.lyricsSearchInput.value = "";
-  setAudioPlayerFile(nextFile);
+  setSongSourceFromFile(nextFile);
+  audioPlayerSetTitle(`Now Playing Dropped Song: ${nextFile.name}`)
   startUpload(nextFile);
 }
 
@@ -512,8 +516,8 @@ function startUpload(source, isInternetSong = false) {
       // Internet songs have no local File, so load the audio from the server by
       // uploadId — the same way a page reload restores the player.
       if (isInternetSong && currentUploadId) {
-        elements.audioPlayer.src = `/upload-audio?${new URLSearchParams({ uploadId: currentUploadId }).toString()}`;
-        elements.audioPlayer.load();
+        elements.audioPlayer.player.src = `/uploaded-audio?${new URLSearchParams({ uploadId: currentUploadId }).toString()}`;
+        elements.audioPlayer.player.load();
       }
       showResult(payload, false);
       elements.reshazamButton.disabled = !currentUploadId;
@@ -571,7 +575,6 @@ function finishResultAction() {
   currentResultPayload = null;
   currentLyricsOptions = [];
   lyricsSearchRequestId += 1;
-  lyricsDelayMs = 0;
   const lyricsDelayInput = document.getElementById("lyrics-delay-input");
   if (lyricsDelayInput) {
     lyricsDelayInput.value = "0.00";
@@ -634,138 +637,8 @@ function buildQueueTooltip() {
     .join("\n");
 }
 
-function setAudioPlayerFile(file) {
-  clearAudioPlayer();
-  currentAudioURL = URL.createObjectURL(file);
-  elements.audioPlayer.src = currentAudioURL;
-  elements.audioPlayer.load();
-}
 
-function clearAudioPlayer() {
-  stopSyncedLyrics();
-  elements.audioPlayer.pause();
-  elements.audioPlayer.removeAttribute("src");
-  elements.audioPlayer.load();
 
-  if (currentAudioURL) {
-    URL.revokeObjectURL(currentAudioURL);
-    currentAudioURL = "";
-  }
-}
-
-// Parse LRC-style synced lyrics ("[mm:ss.xx] verse") into time-sorted
-// { time (seconds), text } pairs. A line may carry multiple time tags.
-// Apply a delay (in milliseconds) to all timestamps in synced lyrics text.
-// Returns the modified lyrics text with adjusted timestamps.
-function applySyncedLyricsDelay(lyricsText, delayMs) {
-  if (!lyricsText || delayMs === 0) {
-    return lyricsText;
-  }
-
-  // Regex to match LRC timestamp lines: [MM:SS.CC] text
-  const timestampRegex = /^\[(\d{2}):(\d{2})\.(\d{2})\](.*)/gm;
-  const delaySeconds = delayMs / 1000;
-
-  return lyricsText.replace(timestampRegex, (match, minutes, seconds, centiseconds, text) => {
-    let totalSeconds = parseInt(minutes, 10) * 60 + parseInt(seconds, 10) + parseInt(centiseconds, 10) / 100;
-    totalSeconds += delaySeconds;
-
-    // Ensure time doesn't go negative
-    if (totalSeconds < 0) {
-      totalSeconds = 0;
-    }
-
-    const newMinutes = Math.floor(totalSeconds / 60);
-    const newSeconds = Math.floor(totalSeconds % 60);
-    const newCentiseconds = Math.round((totalSeconds % 1) * 100);
-
-    return `[${String(newMinutes).padStart(2, "0")}:${String(newSeconds).padStart(2, "0")}.${String(newCentiseconds).padStart(2, "0")}]${text}`;
-  });
-}
-
-function parseSyncedLyrics(text) {
-  if (typeof text !== "string" || !text.trim()) {
-    return [];
-  }
-
-  const tagPattern = /\[(\d{1,2}):(\d{1,2}(?:[.:]\d{1,3})?)\]/g;
-  const entries = [];
-
-  text.split(/\r?\n/).forEach((line) => {
-    tagPattern.lastIndex = 0;
-    const times = [];
-    let match;
-    let lastTagEnd = 0;
-    while ((match = tagPattern.exec(line)) !== null) {
-      const minutes = Number.parseInt(match[1], 10);
-      const seconds = Number.parseFloat(match[2].replace(":", "."));
-      if (!Number.isNaN(minutes) && !Number.isNaN(seconds)) {
-        times.push(minutes * 60 + seconds);
-      }
-      lastTagEnd = tagPattern.lastIndex;
-    }
-    if (times.length === 0) {
-      return;
-    }
-    const verse = line.slice(lastTagEnd).trim();
-    times.forEach((time) => entries.push({ time, text: verse }));
-  });
-
-  entries.sort((a, b) => a.time - b.time);
-  return entries;
-}
-
-function setupSyncedLyrics(option) {
-  syncedLyrics = parseSyncedLyrics(option?.syncedLyrics || "");
-  lastShownLyricIndex = -1;
-
-  if (syncedLyrics.length === 0) {
-    stopSyncedLyrics();
-    return;
-  }
-
-  elements.syncedLyricLine.hidden = false;
-  elements.syncedLyricLine.textContent = "";
-  if (syncedLyricsTimer === null) {
-    syncedLyricsTimer = setInterval(updateSyncedLyric, 50);
-  }
-  updateSyncedLyric();
-}
-
-function updateSyncedLyric() {
-  if (syncedLyrics.length === 0 || !elements.audioPlayer) {
-    return;
-  }
-
-  const position = (elements.audioPlayer.currentTime || 0) - (lyricsDelayMs / 1000);
-  let index = -1;
-  for (let i = 0; i < syncedLyrics.length; i += 1) {
-    if (syncedLyrics[i].time <= position) {
-      index = i;
-    } else {
-      break;
-    }
-  }
-
-  if (index === lastShownLyricIndex) {
-    return;
-  }
-  lastShownLyricIndex = index;
-  elements.syncedLyricLine.textContent = index >= 0 ? syncedLyrics[index].text : "";
-}
-
-function stopSyncedLyrics() {
-  if (syncedLyricsTimer !== null) {
-    clearInterval(syncedLyricsTimer);
-    syncedLyricsTimer = null;
-  }
-  syncedLyrics = [];
-  lastShownLyricIndex = -1;
-  if (elements.syncedLyricLine) {
-    elements.syncedLyricLine.hidden = true;
-    elements.syncedLyricLine.textContent = "";
-  }
-}
 
 function maybeStartLyricsSearch() {
   const metadata = getSelectedMetadata();

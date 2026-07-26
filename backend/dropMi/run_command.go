@@ -379,3 +379,123 @@ func musicToolsPath(path string) (string, error) {
 
 	return filepath.ToSlash(filepath.Join(dockerMountPoint, relativePath)), nil
 }
+
+func extractLyricsFromMP3(ctx context.Context, filePath string) (string, error) {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	musicToolsFilePath, err := musicToolsPath(filePath)
+	if err != nil {
+		return "", err
+	}
+
+	cmd := exec.CommandContext(ctx, "docker", "exec", musicToolsContainerName, "ffprobe",
+		"-v", "quiet",
+		"-print_format", "json",
+		"-show_format",
+		musicToolsFilePath,
+	)
+
+	Debugf("running command: %q", cmd.Args)
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	err = cmd.Run()
+	if err != nil {
+		stderrText := strings.TrimSpace(stderr.String())
+		if stderrText != "" {
+			Debugf("ffprobe stderr: %s", stderrText)
+		}
+		return "", err
+	}
+
+	var probeOutput struct {
+		Format struct {
+			Tags map[string]interface{} `json:"tags"`
+		} `json:"format"`
+	}
+
+	if err := json.Unmarshal(stdout.Bytes(), &probeOutput); err != nil {
+		return "", err
+	}
+
+	if probeOutput.Format.Tags == nil {
+		return "", nil
+	}
+
+	for _, key := range []string{"lyrics-eng", "LYRICS", "USLT", "comment", "COMMENT"} {
+		if val, ok := probeOutput.Format.Tags[key]; ok {
+			if strVal, ok := val.(string); ok && strings.TrimSpace(strVal) != "" {
+				return strVal, nil
+			}
+		}
+	}
+
+	return "", nil
+}
+
+func extractArtworkFromMP3(ctx context.Context, filePath string) ([]byte, string, error) {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	musicToolsFilePath, err := musicToolsPath(filePath)
+	if err != nil {
+		return nil, "", err
+	}
+
+	cmd := exec.CommandContext(ctx, "docker", "exec", musicToolsContainerName, "ffmpeg",
+		"-v", "quiet",
+		"-i", musicToolsFilePath,
+		"-an",
+		"-c:v", "copy",
+		"-f", "image2pipe",
+		"pipe:1",
+	)
+
+	Debugf("running command: %q", cmd.Args)
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	err = cmd.Run()
+	if err != nil {
+		stderrText := strings.TrimSpace(stderr.String())
+		if stderrText != "" {
+			Debugf("ffmpeg stderr: %s", stderrText)
+		}
+		return nil, "", err
+	}
+
+	imageData := stdout.Bytes()
+	if len(imageData) == 0 {
+		return nil, "", fmt.Errorf("no artwork found in MP3")
+	}
+
+	imageType := detectImageType(imageData)
+	return imageData, imageType, nil
+}
+
+func detectImageType(imageData []byte) string {
+	if len(imageData) < 4 {
+		return "application/octet-stream"
+	}
+
+	if imageData[0] == 0xFF && imageData[1] == 0xD8 && imageData[2] == 0xFF {
+		return "image/jpeg"
+	}
+
+	if imageData[0] == 0x89 && imageData[1] == 0x50 && imageData[2] == 0x4E && imageData[3] == 0x47 {
+		return "image/png"
+	}
+
+	if imageData[0] == 0x52 && imageData[1] == 0x49 && imageData[2] == 0x46 && imageData[3] == 0x46 {
+		return "image/webp"
+	}
+
+	return "application/octet-stream"
+}

@@ -1,6 +1,6 @@
 import { elements } from "/authorized/dom.js";
 import { postJSON } from "/authorized/api.js";
-import { loadAudioVolume, saveAudioVolume } from "/authorized/result-ui.js";
+import { audioPlayerSetTitle, setSongSourceAndPlay } from "/authorized/audio-player.js";
 
 export function initTab() {
   const searchButton = document.getElementById("search-internet-button");
@@ -153,19 +153,17 @@ export function initTab() {
 
   // Replace the actions area with the audio player + DropMi button for a song
   // that lives in the server cache.
-  function renderDownloaded(actions, filename) {
+  function renderDownloaded(actions, item, filename) {
     actions.innerHTML = "";
 
-    const audioPlayer = document.createElement("audio");
-    audioPlayer.className = "search-internet-player";
-    audioPlayer.controls = true;
-    audioPlayer.src = `/internet-song-cached/${filename}`;
-    // Restore/persist volume, same as the drop result player.
-    audioPlayer.volume = loadAudioVolume();
-    audioPlayer.addEventListener("volumechange", () => {
-      saveAudioVolume(audioPlayer.volume);
+    const playBtn = document.createElement("button");
+    playBtn.className = "search-internet-play-btn";
+    playBtn.textContent = "Play";
+    playBtn.addEventListener("click", () => {
+      setSongSourceAndPlay(`/internet-song-cached/${filename}`);
+      audioPlayerSetTitle(`Now Playing Internet Song: ${item.title} (${filename})`)
     });
-    actions.appendChild(audioPlayer);
+    actions.appendChild(playBtn);
 
     const dropmiBtn = document.createElement("button");
     dropmiBtn.className = "search-internet-dropmi-btn";
@@ -194,7 +192,7 @@ export function initTab() {
         return;
       }
 
-      renderDownloaded(actions, result.payload.filename);
+      renderDownloaded(actions, item, result.payload.filename);
     } catch (error) {
       showStatus(`Error: ${error.message}`, "error");
       downloadBtn.disabled = false;
@@ -205,7 +203,7 @@ export function initTab() {
   async function showDownloadedState(item, actions) {
 
     try {
-      renderDownloaded(actions, item.is_cached);
+      renderDownloaded(actions, item, item.is_cached);
     } catch {
       actions.innerHTML = "";
       actions.appendChild(createDownloadButton(item, actions));

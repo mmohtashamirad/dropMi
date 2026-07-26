@@ -75,7 +75,7 @@ body {
   align-items: center;
   justify-content: flex-start;
   gap: 14px;
-  padding: 84px 24px 24px;
+  padding: 84px 24px 100px;
   position: relative;
 }
 
@@ -352,23 +352,36 @@ h1 {
   border-radius: 18px;
 }
 
-.audio-player {
-  display: block;
-  width: min(760px, 100%);
-  margin: 18px auto 0;
-}
-
 .synced-lyric-line {
-  width: min(760px, 100%);
-  margin: 10px auto 0;
-  min-height: 1.4em;
+  width: 100%;
+  padding: 4px 24px;
   text-align: center;
-  font-size: 1.1rem;
-  font-weight: 700;
+  font-size: 0.95rem;
+  font-weight: 600;
   color: var(--accent);
+  min-height: 1.2em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .synced-lyric-line[hidden] {
+  display: none;
+}
+
+.audio-player-title {
+  width: 100%;
+  padding: 4px 24px;
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-height: 1.2em;
+}
+
+.audio-player-title[hidden] {
   display: none;
 }
 
@@ -698,10 +711,27 @@ h1 {
   font-size: 0.92rem;
 }
 
-.duplicate-player {
+.duplicate-play-btn {
   display: block;
-  width: 100%;
+  padding: 8px 16px;
   margin-top: 8px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #fffaf3;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.duplicate-play-btn:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.duplicate-play-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .lyrics-section {
@@ -1198,10 +1228,25 @@ h1 {
   cursor: not-allowed;
 }
 
-.search-internet-player {
-  flex: 1 1 220px;
-  min-width: 200px;
-  height: 36px;
+.search-internet-play-btn {
+  padding: 8px 16px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #fffaf3;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.search-internet-play-btn:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.search-internet-play-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .search-internet-dropmi-btn {
@@ -1223,4 +1268,22 @@ h1 {
 .search-internet-dropmi-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+/* Fixed audio player at the bottom of the page, always visible above content */
+.audio-player-section {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--panel);
+  border-top: 1px solid var(--panel-border);
+  padding: 12px 24px;
+  z-index: 1000;
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.audio-player {
+  width: 100%;
+  height: 36px;
 }

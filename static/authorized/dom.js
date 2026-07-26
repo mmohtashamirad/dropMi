@@ -1,6 +1,6 @@
 const elementIds = {
-  audioPlayer: "audio-player",
   browseButton: "browse-button",
+  playResultButton: "play-result-button",
   cancelResultButton: "cancel-result-button",
   cancelUploadButton: "cancel-upload-button",
   dropScreen: "drop-screen",
@@ -14,7 +14,6 @@ const elementIds = {
   lyricsSearchInput: "lyrics-search-input",
   lyricsOptions: "lyrics-options",
   lyricsSection: "lyrics-section",
-  syncedLyricLine: "synced-lyric-line",
   logoutButton: "logout-button",
   okButton: "ok-button",
   panel: "tab-panel",
@@ -34,12 +33,25 @@ const elementIds = {
   uploadScreen: "upload-screen"
 };
 
+const audioPlayerIds = {
+  player: "audio-player",
+  title: "audio-player-title",
+  syncedLyricLine: "synced-lyric-line"
+};
+
 export const elements = {};
 
 export function refreshElements() {
   Object.entries(elementIds).forEach(([key, id]) => {
     elements[key] = document.getElementById(id);
   });
+
+  // Group audio player elements under one namespace
+  elements.audioPlayer = {};
+  Object.entries(audioPlayerIds).forEach(([key, id]) => {
+    elements.audioPlayer[key] = document.getElementById(id);
+  });
+
   return elements;
 }
 

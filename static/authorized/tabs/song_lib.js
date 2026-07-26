@@ -1,3 +1,5 @@
+import { setSongSourceAndPlay, audioPlayerSetTitle } from "/authorized/audio-player.js";
+
 const PAGE_SIZE_OPTIONS = [5, 10, 25, 50, 100];
 const DEFAULT_PAGE_SIZE = 5;
 const FILTER_DEBOUNCE_MS = 1500;
@@ -189,6 +191,7 @@ async function loadLibraryPage(state) {
 
 function createSongRow(song) {
   const row = document.createElement("tr");
+  row.appendChild(createArtworkCell(song));
   row.appendChild(createTrackCell(song));
   row.appendChild(createTextCell(song.artist));
   row.appendChild(createTextCell(song.album));
@@ -199,11 +202,66 @@ function createSongRow(song) {
   return row;
 }
 
+async function playSong(song) {
+  if (!song.path) return;
+  const path = song.path.split("/").slice(-3).join("/");
+  const url = `/song?${new URLSearchParams({ path: path }).toString()}`;
+  const title = song.trackName || song.fileName || "Unknown";
+  const artist = song.artist ? song.artist : "";
+
+  let lyricsOption = null;
+  try {
+    const lyricsResponse = await fetch(`/song-lyric?${new URLSearchParams({ path: path }).toString()}`);
+    if (lyricsResponse.ok) {
+      const lyricsData = await lyricsResponse.json();
+      if (lyricsData.lyrics) {
+        lyricsOption = { syncedLyrics: lyricsData.lyrics };
+      }
+    }
+  } catch (error) {
+    // Silently ignore lyrics fetch errors
+  }
+
+  setSongSourceAndPlay(url, lyricsOption);
+  audioPlayerSetTitle(`Now Playing: ${artist} - ${title}  (${path})`);
+}
+
+function createArtworkCell(song) {
+  const path = song.path.split("/").slice(-3).join("/");
+  const cell = document.createElement("td");
+  cell.style.textAlign = "center";
+  cell.style.padding = "4px";
+
+  const img = document.createElement("img");
+  img.style.width = "100px";
+  img.style.height = "100px";
+  img.style.objectFit = "cover";
+  img.style.cursor = "pointer";
+  img.style.borderRadius = "4px";
+  img.alt = song.trackName || song.fileName || "Album art";
+
+  const artworkUrl = `/song-artwork?${new URLSearchParams({ path: path }).toString()}`;
+  img.src = artworkUrl;
+  img.addEventListener("click", (e) => {
+    e.stopPropagation();
+    window.open(artworkUrl, "_blank");
+  });
+
+  img.addEventListener("error", () => {
+    img.style.display = "none";
+  });
+
+  cell.appendChild(img);
+  return cell;
+}
+
 function createTrackCell(song) {
   const cell = document.createElement("td");
   const title = document.createElement("div");
   title.className = "library-track-title";
   title.textContent = song.trackName || song.fileName || "Untitled";
+  title.style.cursor = "pointer";
+  title.addEventListener("click", () => playSong(song));
 
   const meta = document.createElement("div");
   meta.className = "library-track-meta";

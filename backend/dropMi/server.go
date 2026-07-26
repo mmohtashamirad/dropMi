@@ -77,7 +77,9 @@ func (s *server) routes() http.Handler {
 	mux.HandleFunc("/cancel", s.handleCancel)
 	mux.HandleFunc("/reshazam", s.handleReshazam)
 	mux.HandleFunc("/song", s.handleSong)
-	mux.HandleFunc("/upload-audio", s.handleUploadAudio)
+	mux.HandleFunc("/song-lyric", s.handleSongLyric)
+	mux.HandleFunc("/song-artwork", s.handleSongArtwork)
+	mux.HandleFunc("/uploaded-audio", s.handleUploadAudio)
 	mux.HandleFunc("/favicon.ico", s.handleFavicon)
 	mux.HandleFunc("/", s.handleIndex)
 

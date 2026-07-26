@@ -1,5 +1,6 @@
 import { elements } from "/authorized/dom.js";
 import { resetDropMessage, setProgress, showScreen } from "/authorized/screen-ui.js";
+import { setSongSourceAndPlay } from "/authorized/audio-player.js";
 
 const NO_LYRICS_OPTION = {
   title: "Enter Your Own Lyrics",
@@ -12,32 +13,6 @@ const NO_LYRICS_OPTION = {
 let lastEyeD3Output = "";
 let lastSongrecOutput = "";
 
-
-const AUDIO_VOLUME_STORAGE_KEY = "dropmi:audio-volume";
-const DEFAULT_AUDIO_VOLUME = 0.5;
-
-export function loadAudioVolume() {
-  try {
-    const stored = localStorage.getItem(AUDIO_VOLUME_STORAGE_KEY);
-    if (stored !== null) {
-      const volume = parseFloat(stored);
-      if (!isNaN(volume) && volume >= 0 && volume <= 1) {
-        return volume;
-      }
-    }
-  } catch {
-    // ignore
-  }
-  return DEFAULT_AUDIO_VOLUME;
-}
-
-export function saveAudioVolume(volume) {
-  try {
-    localStorage.setItem(AUDIO_VOLUME_STORAGE_KEY, String(volume));
-  } catch {
-    // ignore
-  }
-}
 
 export function clearResultError() {
   const existingError = elements.resultScreen.querySelector(".result-error");
@@ -276,13 +251,13 @@ function createDuplicateItem(duplicate) {
   item.appendChild(details);
 
   if (duplicate.relativePath) {
-    const player = document.createElement("audio");
-    player.className = "duplicate-player";
-    player.controls = true;
-    player.preload = "metadata";
-    player.src = `/song?${new URLSearchParams({ path: duplicate.relativePath }).toString()}`;
-    player.volume =  loadAudioVolume();
-    item.appendChild(player);
+    const playBtn = document.createElement("button");
+    playBtn.className = "duplicate-play-btn";
+    playBtn.textContent = "Play";
+    playBtn.addEventListener("click", () => {
+      setSongSourceAndPlay(`/song?${new URLSearchParams({ path: duplicate.relativePath }).toString()}`);
+    });
+    item.appendChild(playBtn);
   }
 
   return item;

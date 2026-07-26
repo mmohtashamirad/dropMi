@@ -20,6 +20,16 @@
       <section class="panel" id="tab-panel" aria-live="polite"></section>
     </main>
 
+    <div class="audio-player-section" id="audio-player-section">
+      <div class="synced-lyric-line" id="synced-lyric-line" hidden></div>
+      <div class="audio-player-title" id="audio-player-title" hidden></div>
+      <audio
+        id="audio-player"
+        class="audio-player"
+        controls
+      ></audio>
+    </div>
+
     <template id="result-error-template">
       <div class="result-error">
         <button class="result-error-close" type="button" aria-label="Close">X</button>

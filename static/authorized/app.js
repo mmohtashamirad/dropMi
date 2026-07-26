@@ -1,6 +1,7 @@
 import { elements, refreshElements } from "/authorized/dom.js";
 import { checkSession, logout } from "/authorized/auth-client.js";
 import { hideSessionBar, showSessionBar } from "/authorized/auth-ui.js";
+import { initAudioPlayer } from "/authorized/audio-player.js";
 
 const themeStorageKey = "dropMi-theme";
 let activeTabController = null;
@@ -10,6 +11,7 @@ let availableTabs = [];
 initializeTheme();
 bindShellEvents();
 initializeApp();
+initAudioPlayer();
 
 function bindShellEvents() {
   elements.logoutButton.addEventListener("click", handleLogout);

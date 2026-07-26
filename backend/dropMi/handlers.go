@@ -886,6 +886,61 @@ func (s *server) handleSong(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, songPath)
 }
 
+func (s *server) handleSongLyric(w http.ResponseWriter, r *http.Request) {
+	if _, ok := s.requireAuth(w, r); !ok {
+		return
+	}
+
+	if r.Method != http.MethodGet {
+		w.Header().Set("Allow", http.MethodGet)
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	songPath, err := safeUploadSongPath(s.uploadDir, r.URL.Query().Get("path"))
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	lyrics, err := extractLyricsFromMP3(context.Background(), songPath)
+	if err != nil {
+		Debugf("extract lyrics: %v", err)
+		writeJSON(w, http.StatusOK, map[string]string{"lyrics": ""})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]string{"lyrics": lyrics})
+}
+
+func (s *server) handleSongArtwork(w http.ResponseWriter, r *http.Request) {
+	if _, ok := s.requireAuth(w, r); !ok {
+		return
+	}
+
+	if r.Method != http.MethodGet {
+		w.Header().Set("Allow", http.MethodGet)
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	songPath, err := safeUploadSongPath(s.uploadDir, r.URL.Query().Get("path"))
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	imageData, imageType, err := extractArtworkFromMP3(context.Background(), songPath)
+	if err != nil || len(imageData) == 0 {
+		Debugf("extract artwork: %v", err)
+		http.NotFound(w, r)
+		return
+	}
+
+	w.Header().Set("Content-Type", imageType)
+	w.Write(imageData)
+}
+
 func safeUploadSongPath(uploadDir string, relativePath string) (string, error) {
 	relativePath = strings.TrimSpace(relativePath)
 	if relativePath == "" || filepath.IsAbs(relativePath) {
