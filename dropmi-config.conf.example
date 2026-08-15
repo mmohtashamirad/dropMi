@@ -19,6 +19,8 @@ upload_tmp_dir=tmp_upload
 upload_dir=upload
 # Directory where uploads that fail processing are kept (defaults to failed_upload)
 failed_upload_dir=failed_upload
+# Directory where deleted songs are kept (defaults to deleted_songs)
+deleted_dir=deleted_songs
 
 # Path to the script to search and download song from internet
 # (defaults to empty)

@@ -17,6 +17,7 @@ type server struct {
 	uploadTmpDir         string
 	uploadDir            string
 	failedUploadDir      string
+	deletedDir           string
 	internetSongScript   string
 	internetSongCache    string
 	authDB               *sql.DB
@@ -35,6 +36,7 @@ func newServer(cfg config, authDB *sql.DB, songs *songStore, events *eventStore)
 		uploadTmpDir:         cfg.UploadTmpDir,
 		uploadDir:            cfg.UploadDir,
 		failedUploadDir:      cfg.FailedUploadDir,
+		deletedDir:           cfg.DeletedDir,
 		internetSongScript:   cfg.InternetSongScript,
 		internetSongCache:    cfg.InternetSongCache,
 		authDB:               authDB,
@@ -79,7 +81,10 @@ func (s *server) routes() http.Handler {
 	mux.HandleFunc("/song", s.handleSong)
 	mux.HandleFunc("/song-lyric", s.handleSongLyric)
 	mux.HandleFunc("/song-artwork", s.handleSongArtwork)
-	mux.HandleFunc("/uploaded-audio", s.handleUploadAudio)
+	mux.HandleFunc("/uploaded-audio", s.handleUploadedAudio)
+	mux.HandleFunc("/uploaded-audio-artwork/", s.handleUploadedAudioArtwork)
+	mux.HandleFunc("/uploaded-audio-lyric/", s.handleUploadedAudioLyric)
+	mux.HandleFunc("/delete-song", s.handleDeleteSong)
 	mux.HandleFunc("/favicon.ico", s.handleFavicon)
 	mux.HandleFunc("/", s.handleIndex)
 

@@ -25,6 +25,7 @@ const (
 	eventCleanup                = "cleanup"
 	eventError                  = "error"
 	eventInternetSongDownload   = "internet_song_download"
+	eventDeleteSong             = "delete_song"
 )
 
 type eventStore struct {

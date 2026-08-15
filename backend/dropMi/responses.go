@@ -7,13 +7,23 @@ import (
 )
 
 type analyzeResponse struct {
-	UploadID      string          `json:"uploadId,omitempty"`
-	FileName      string          `json:"fileName"`
-	Duplicates    []duplicateSong `json:"duplicates,omitempty"`
-	EyeD3Output   string          `json:"eyeD3Output,omitempty"`
-	SongrecOutput string          `json:"songrecOutput,omitempty"`
-	LyricsOptions []lyricsOption  `json:"lyricsOptions,omitempty"`
-	Error         string          `json:"error,omitempty"`
+	UploadID        string          `json:"uploadId,omitempty"`
+	FileName        string          `json:"fileName"`
+	Duplicates      []duplicateSong `json:"duplicates,omitempty"`
+	SongMetadata    metadataFields  `json:"SongMetadata,omitempty"`
+	SongrecMetadata metadataFields  `json:"songrecMetadata,omitempty"`
+	Error           string          `json:"error,omitempty"`
+}
+
+type metadataFields struct {
+	Artist    string `json:"artist"`
+	TrackName string `json:"trackName"`
+	Album     string `json:"album"`
+	Genre     string `json:"genre"`
+	Comment   string `json:"comment"`
+	Language  string `json:"language"`
+	AlbumArt  string `json:"albumArt"`
+	Lyrics    string `json:"lyrics"`
 }
 
 type duplicateSong struct {

@@ -18,9 +18,6 @@ import {
   setSongSourceAndPlay,
   setSongSourceFromFile,
   clearAudioPlayer,
-  setLyricsDelay,
-  setupSyncedLyrics,
-  stopSyncedLyrics,
   audioPlayerSetTitle
 } from "/authorized/audio-player.js";
 import {
@@ -29,19 +26,31 @@ import {
   setDraggingState,
   showScreen
 } from "/authorized/screen-ui.js";
-import { beaconCancelUpload, cancelUpload, confirmUpload, findDuplicates, findLyricsBySearchText, reShazam, uploadFile, uploadInternetSong } from "/authorized/upload-client.js";
+import { beaconCancelUpload, cancelUpload, confirmUpload, findDuplicates, reShazam, uploadFile, uploadInternetSong } from "/authorized/upload-client.js";
+import {
+  lyricsState,
+  resetLyricsState,
+  clearLyricsState,
+  captureLyricsState,
+  restoreLyricsState,
+  addUploadedFileLyricsToOptions,
+  selectFirstLyricsOption,
+  maybeStartLyricsSearch,
+  startLyricsSearch,
+  fillLyricsSearchInput,
+  applySyncedLyricsDelay,
+  initLyricsEventListeners
+} from "./drop-lyrics.js";
 
 let currentUploadId = "";
 let currentFileName = "";
 let currentResultPayload = null;
 let dragDepth = 0;
 let activeUpload = null;
-let lyricsSearchRequestId = 0;
 let pendingFiles = [];
 let queuedFiles = [];
 let queueTotal = 0;
 let queueCompleted = 0;
-let currentLyricsOptions = [];
 // Snapshot of the result screen taken when leaving the Drop tab, so returning
 // restores it instead of resetting.
 let preservedResult = null;
@@ -184,22 +193,8 @@ export function initTab() {
     activeUpload.abort();
   });
 
-  elements.findLyricsButton.addEventListener("click", () => {
-    startLyricsSearch({ showMissingMetadataError: true });
-  });
-
-  elements.lyricsSearchInput.addEventListener("keydown", (event) => {
-    if (event.key === "Enter") {
-      event.preventDefault();
-      elements.findLyricsButton.click();
-    }
-  });
-
-  // When a lyric option is selected, track the song position and show the
-  // current synced line under the audio player.
-  elements.lyricsOptions.addEventListener("change", () => {
-    setupSyncedLyrics(getSelectedLyricsOption());
-  });
+  // Initialize lyrics event listeners
+  initLyricsEventListeners();
 
   // Press-and-hold OK arms a force upload. The red cue appears once the hold
   // passes the threshold; the actual decision is the measured hold time.
@@ -318,16 +313,6 @@ export function initTab() {
     elements.reshazamButton.textContent = "Re-shazam";
   });
 
-  const lyricsDelayInput = document.getElementById("lyrics-delay-input");
-  if (lyricsDelayInput) {
-    lyricsDelayInput.addEventListener("input", () => {
-      const delaySecs = parseFloat(lyricsDelayInput.value) || 0;
-      lyricsDelayMs = delaySecs * 1000;
-      // Immediately update displayed lyric with new delay
-      updateSyncedLyric();
-    });
-  }
-
   elements.playResultButton.addEventListener("click", () => {
     if (!currentUploadId) {
       return;
@@ -426,8 +411,9 @@ function discardActiveUpload() {
   clearAudioPlayer();
   activeUpload = null;
   currentUploadId = "";
+  lyricsState.currentUploadId = "";
   currentFileName = "";
-  currentLyricsOptions = [];
+  lyricsState.currentOptions = [];
   dragDepth = 0;
 }
 
@@ -436,7 +422,7 @@ function captureResultState() {
     filename: currentFileName,
     uploadId: currentUploadId,
     payload: currentResultPayload,
-    lyricsOptions: currentLyricsOptions.slice(),
+    lyricsOptions: lyricsState.currentOptions.slice(),
     lyricsSearchText: elements.lyricsSearchInput.value,
     edits: captureResultEdits(),
     queueCompleted,
@@ -448,15 +434,16 @@ function captureResultState() {
 
 function restoreResultState(snapshot) {
   currentUploadId = snapshot.uploadId;
+  lyricsState.currentUploadId = currentUploadId;
   currentResultPayload = snapshot.payload;
-  currentLyricsOptions = snapshot.lyricsOptions || [];
+  lyricsState.currentOptions = snapshot.lyricsOptions || [];
   pendingFiles = snapshot.pendingFiles || [];
   queuedFiles = snapshot.queuedFiles || [];
   queueTotal = snapshot.queueTotal || 0;
   queueCompleted = snapshot.queueCompleted || 0;
 
   showResult(snapshot.payload || {}, Boolean(snapshot.payload?.error));
-  setLyricsOptions(currentLyricsOptions);
+  setLyricsOptions(lyricsState.currentOptions);
   applyResultEdits(snapshot.edits);
   elements.lyricsSearchInput.value = snapshot.lyricsSearchText || "";
   elements.reshazamButton.disabled = !currentUploadId;
@@ -482,7 +469,8 @@ function enqueueFiles(fileList) {
   queueTotal = files.length;
   queueCompleted = 0;
   currentUploadId = "";
-  currentLyricsOptions = [];
+  lyricsState.currentUploadId = "";
+  lyricsState.currentOptions = [];
   preservedResult = null;
   clearStoredResult();
   processNextFile();
@@ -504,14 +492,17 @@ function processNextFile() {
   startUpload(nextFile);
 }
 
+
 function startUpload(source, isInternetSong = false) {
   updateQueueStatus();
   const callbacks = {
-    onSuccess(payload) {
+    async onSuccess(payload) {
       activeUpload = null;
       currentUploadId = payload.uploadId || "";
+      lyricsState.currentUploadId = currentUploadId;
       currentResultPayload = payload;
-      currentLyricsOptions = payload.lyricsOptions || [];
+      lyricsState.currentOptions = payload.lyricsOptions || [];
+      const hasUploadedLyrics = await addUploadedFileLyricsToOptions(payload);
       updateQueueStatus();
       // Internet songs have no local File, so load the audio from the server by
       // uploadId — the same way a page reload restores the player.
@@ -520,6 +511,11 @@ function startUpload(source, isInternetSong = false) {
         elements.audioPlayer.player.load();
       }
       showResult(payload, false);
+      if (hasUploadedLyrics) {
+        lyricsState.hasUploadedFile = true;
+        setLyricsOptions(lyricsState.currentOptions);
+        selectFirstLyricsOption();
+      }
       elements.reshazamButton.disabled = !currentUploadId;
       fillLyricsSearchInput();
       maybeStartLyricsSearch();
@@ -529,13 +525,20 @@ function startUpload(source, isInternetSong = false) {
         findDuplicatesInBackground(currentUploadId);
       }
     },
-    onError(payload) {
+    async onError(payload) {
       activeUpload = null;
       currentUploadId = payload.uploadId || "";
+      lyricsState.currentUploadId = currentUploadId;
       currentResultPayload = payload;
-      currentLyricsOptions = payload.lyricsOptions || [];
+      lyricsState.currentOptions = payload.lyricsOptions || [];
+      const hasUploadedLyrics = await addUploadedFileLyricsToOptions(payload);
       updateQueueStatus();
       showResult(payload, true);
+      if (hasUploadedLyrics) {
+        lyricsState.hasUploadedFile = true;
+        setLyricsOptions(lyricsState.currentOptions);
+        selectFirstLyricsOption();
+      }
       elements.reshazamButton.disabled = !currentUploadId;
       fillLyricsSearchInput();
       maybeStartLyricsSearch();
@@ -572,9 +575,10 @@ function startInternetSongUpload(filename) {
 function finishResultAction() {
   clearStoredResult();
   currentUploadId = "";
+  lyricsState.currentUploadId = "";
   currentResultPayload = null;
-  currentLyricsOptions = [];
-  lyricsSearchRequestId += 1;
+  lyricsState.currentOptions = [];
+  lyricsState.searchRequestId += 1;
   const lyricsDelayInput = document.getElementById("lyrics-delay-input");
   if (lyricsDelayInput) {
     lyricsDelayInput.value = "0.00";
@@ -635,57 +639,6 @@ function buildQueueTooltip() {
   return queuedFiles
     .map((file, index) => `${index + 1}. ${file.name}`)
     .join("\n");
-}
-
-
-
-
-function maybeStartLyricsSearch() {
-  const metadata = getSelectedMetadata();
-  if (!metadata.artist || !metadata.track_name) {
-    return;
-  }
-
-  startLyricsSearch({ showMissingMetadataError: false });
-}
-
-async function startLyricsSearch({ showMissingMetadataError }) {
-  const requestId = lyricsSearchRequestId + 1;
-  lyricsSearchRequestId = requestId;
-  const lyricsSearchText = elements.lyricsSearchInput.value.trim();
-
-  elements.findLyricsButton.disabled = true;
-  elements.reshazamButton.disabled = true;
-  elements.findLyricsButton.textContent = "Finding lyrics...";
-  clearResultError();
-
-  const result = await findLyricsBySearchText(lyricsSearchText);
-  if (requestId !== lyricsSearchRequestId) {
-    return;
-  }
-
-  if (!result.ok) {
-    if (showMissingMetadataError || result.error !== "Enter a lyrics search before searching.") {
-      renderConfirmError(result.error);
-    }
-    elements.findLyricsButton.disabled = false;
-    elements.findLyricsButton.textContent = "Find lyrics";
-    elements.reshazamButton.disabled = !currentUploadId;
-    return;
-  }
-
-  currentLyricsOptions = result.payload?.lyricsOptions || [];
-  setLyricsOptions(currentLyricsOptions);
-  elements.findLyricsButton.disabled = false;
-  elements.findLyricsButton.textContent = "Find lyrics";
-  elements.reshazamButton.disabled = !currentUploadId;
-}
-
-function fillLyricsSearchInput() {
-  const metadata = getSelectedMetadata();
-  elements.lyricsSearchInput.value = [metadata.artist, metadata.track_name]
-    .filter(Boolean)
-    .join(" ");
 }
 
 async function findDuplicatesInBackground(uploadId) {

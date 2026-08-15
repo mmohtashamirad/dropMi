@@ -10,8 +10,8 @@ const NO_LYRICS_OPTION = {
   plainLyrics: "No lyric or removed by DropMi"
 };
 
-let lastEyeD3Output = "";
-let lastSongrecOutput = "";
+let lastEyeD3Metadata = {};
+let lastSongrecMetadata = {};
 
 
 export function clearResultError() {
@@ -31,14 +31,14 @@ export function renderConfirmError(message) {
 }
 
 export function showResult(payload, isError) {
-  lastEyeD3Output = payload.eyeD3Output || "";
-  lastSongrecOutput = payload.songrecOutput || "";
+  lastEyeD3Metadata = payload.SongMetadata || {};
+  lastSongrecMetadata = payload.songrecMetadata || {};
 
   setProgress(100);
   showScreen(elements.resultScreen);
   elements.resultFileName.textContent = payload.fileName ? `File: ${payload.fileName}` : "";
   renderDuplicateNotice(payload.duplicates || []);
-  renderComparisonTable(lastEyeD3Output, lastSongrecOutput);
+  renderComparisonTable(lastEyeD3Metadata, lastSongrecMetadata);
   renderLyricsOptions(payload.lyricsOptions || []);
   clearResultError();
 
@@ -52,8 +52,6 @@ export function showResult(payload, isError) {
 }
 
 export function resetResultScreen() {
-  lastEyeD3Output = "";
-  lastSongrecOutput = "";
   elements.resultFileName.textContent = "";
   renderDuplicateNotice(null);
   elements.resultTableBody.innerHTML = "";
@@ -64,9 +62,9 @@ export function resetResultScreen() {
   elements.fileInput.value = "";
 }
 
-export function updateSongrecResult(songrecOutput) {
-  lastSongrecOutput = songrecOutput || "";
-  renderComparisonTable(lastEyeD3Output, lastSongrecOutput);
+export function updateSongrecResult(songrecMetadata) {
+  lastSongrecMetadata = songrecMetadata || {};
+  renderComparisonTable(lastEyeD3Metadata, lastSongrecMetadata);
 }
 
 export function setLyricsOptions(options) {
@@ -155,17 +153,15 @@ export function applyResultEdits(edits) {
   }
 }
 
-function renderComparisonTable(eyeD3Output, songrecOutput) {
-  const eyeD3Data = extractEyeD3Fields(eyeD3Output);
-  const songrecData = extractSongrecFields(songrecOutput);
+function renderComparisonTable(eyeD3Data, songrecData) {
   const rows = [
-    ["Artist", eyeD3Data.artist, songrecData.artist],
-    ["Track Name", eyeD3Data.trackName, songrecData.trackName],
-    ["Album", eyeD3Data.album, songrecData.album],
-    ["Genre", eyeD3Data.genre, songrecData.genre],
-    ["Comment", eyeD3Data.comment, songrecData.comment],
-    ["Language", eyeD3Data.language, songrecData.language],
-    ["Album Art", eyeD3Data.albumArt, songrecData.albumArt]
+    ["Artist", eyeD3Data.artist || "", songrecData.artist || ""],
+    ["Track Name", eyeD3Data.trackName || "", songrecData.trackName || ""],
+    ["Album", eyeD3Data.album || "", songrecData.album || ""],
+    ["Genre", eyeD3Data.genre || "", songrecData.genre || ""],
+    ["Comment", eyeD3Data.comment || "", songrecData.comment || ""],
+    ["Language", eyeD3Data.language || "", songrecData.language || ""],
+    ["Album Art", eyeD3Data.albumArt || "", songrecData.albumArt || ""]
   ];
 
   elements.resultTableBody.innerHTML = "";
@@ -365,158 +361,6 @@ function renderEmptyComparisonTable(message) {
   elements.resultTableBody.appendChild(row);
 }
 
-function extractEyeD3Fields(output) {
-  const parsed = parseEmbeddedJSON(output);
-  if (!parsed) {
-    return emptyMetadata();
-  }
-
-  return {
-    artist: parsed.artist || parsed.album_artist || "",
-    trackName: parsed.title || "",
-    album: parsed.album || "",
-    genre: extractEyeD3Genre(parsed),
-    comment: extractEyeD3Comment(parsed),
-    language: extractEyeD3Language(parsed),
-    albumArt: extractEyeD3AlbumArt(parsed)
-  };
-}
-
-function extractSongrecFields(output) {
-  const parsed = parseEmbeddedJSON(output);
-  const track = parsed?.track || {};
-
-  return {
-    artist: track.subtitle || firstArtistId(track.artists),
-    trackName: track.title || "",
-    album: extractSongrecAlbum(track),
-    genre: track.genres?.primary || "",
-    comment: "",
-    language: "",
-    albumArt: track.images?.coverart || track.images?.coverarthq || track.images?.background || ""
-  };
-}
-
-function extractSongrecAlbum(track) {
-  if (!Array.isArray(track.sections) || track.sections.length === 0) {
-    return "";
-  }
-
-  const metadata = track.sections[0].metadata;
-  if (!Array.isArray(metadata)) {
-    return "";
-  }
-
-  const albumMeta = metadata.find((item) => item?.title === "Album");
-  return albumMeta?.text || "";
-}
-
-function extractEyeD3Genre(parsed) {
-  if (typeof parsed.genre === "string") {
-    return parsed.genre;
-  }
-
-  if (parsed.genre?.name) {
-    return parsed.genre.name;
-  }
-
-  return "";
-}
-
-function extractEyeD3Comment(parsed) {
-  if (typeof parsed.comment === "string") {
-    return parsed.comment;
-  }
-
-  if (typeof parsed.comments === "string") {
-    return parsed.comments;
-  }
-
-  if (Array.isArray(parsed.comments)) {
-    const comment = parsed.comments.find((item) => item?.text || item?.comment);
-    return comment?.text || comment?.comment || "";
-  }
-
-  return "";
-}
-
-function extractEyeD3Language(parsed) {
-  if (typeof parsed.language === "string") {
-    return parsed.language;
-  }
-
-  if (typeof parsed.languages === "string") {
-    return parsed.languages;
-  }
-
-  if (Array.isArray(parsed.languages)) {
-    return parsed.languages.filter(Boolean).join(", ");
-  }
-
-  return extractEyeD3TextFrame(parsed, "TLAN");
-}
-
-function extractEyeD3TextFrame(parsed, frameID) {
-  const frames = parsed.text_frames || parsed.textFrames;
-  if (!Array.isArray(frames)) {
-    return "";
-  }
-
-  const frame = frames.find((item) => item?.id === frameID || item?.frame_id === frameID);
-  return frame?.text || frame?.value || "";
-}
-
-function extractEyeD3AlbumArt(parsed) {
-  const images = parsed.images;
-  if (!images) {
-    return "";
-  }
-
-  if (Array.isArray(images) && images[0]?.image_data) {
-    return images[0].image_data;
-  }
-
-  return "";
-}
-
-function firstArtistId(artists) {
-  if (!Array.isArray(artists) || artists.length === 0) {
-    return "";
-  }
-
-  return artists[0].name || artists[0].id || "";
-}
-
-function parseEmbeddedJSON(text) {
-  if (!text) {
-    return null;
-  }
-
-  const start = text.indexOf("{");
-  const end = text.lastIndexOf("}");
-  if (start === -1 || end === -1 || end < start) {
-    return null;
-  }
-
-  try {
-    return JSON.parse(text.slice(start, end + 1));
-  } catch {
-    return null;
-  }
-}
-
-function emptyMetadata() {
-  return {
-    artist: "",
-    trackName: "",
-    album: "",
-    genre: "",
-    comment: "",
-    language: "",
-    albumArt: ""
-  };
-}
-
 function createTextCell(text) {
   const cell = document.createElement("td");
   cell.textContent = text || "—";
@@ -554,7 +398,7 @@ function createValueCell(value) {
   if (looksLikeImage(value)) {
     const image = document.createElement("img");
     image.className = "result-art";
-    image.src = value;
+    image.src = normalizeImageUrl(value) || value;
     image.alt = "Album art";
     cell.appendChild(image);
     return cell;
@@ -653,13 +497,35 @@ function updateArtPreview(container, value) {
 
   const image = document.createElement("img");
   image.className = "result-art";
-  image.src = value;
+  image.src = normalizeImageUrl(value) || value;
   image.alt = "Selected album art";
   container.appendChild(image);
 }
 
+function normalizeImageUrl(value) {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  // If it's an uploaded artwork URL, make it a full server URL
+  if (value.startsWith("/uploaded-audio-artwork/")) {
+    return `${window.location.protocol}//${window.location.host}${value}`;
+  }
+
+  return value;
+}
+
 function looksLikeImage(value) {
-  return typeof value === "string" && (value.startsWith("http://") || value.startsWith("https://") || value.startsWith("data:image/"));
+  if (typeof value !== "string") {
+    return false;
+  }
+
+  return (
+    value.startsWith("http://") ||
+    value.startsWith("https://") ||
+    value.startsWith("data:image/") ||
+    value.startsWith("/uploaded-audio-artwork/")
+  );
 }
 
 function toMetadataKey(label) {

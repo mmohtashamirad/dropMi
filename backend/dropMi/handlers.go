@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"os"
 	"os/exec"
@@ -185,18 +186,17 @@ func (s *server) analyzeUploadedFile(w http.ResponseWriter, ctx context.Context,
 	}
 	Debugf("song-preprocess for %q: %s", fileName, strings.TrimSpace(sppOutput))
 
-	eyeD3Output, eyeD3Err := runEyeD3(ctx, tempPath)
-	if eyeD3Err != nil {
-		message := "eyeD3 could not analyze the file."
-		if errors.Is(eyeD3Err, context.DeadlineExceeded) {
-			message = "eyeD3 took too long to analyze the file."
+	metadataOutput, metadataErr := ExtractSongMetaData(ctx, tempPath)
+	if metadataErr != nil {
+		message := "Could not read file metadata."
+		if errors.Is(metadataErr, context.DeadlineExceeded) {
+			message = "Metadata extraction took too long."
 		}
 
 		writeJSON(w, http.StatusInternalServerError, analyzeResponse{
-			UploadID:    uploadID,
-			FileName:    fileName,
-			EyeD3Output: eyeD3Output,
-			Error:       message,
+			UploadID: uploadID,
+			FileName: fileName,
+			Error:    message,
 		})
 		return
 	}
@@ -218,11 +218,9 @@ func (s *server) analyzeUploadedFile(w http.ResponseWriter, ctx context.Context,
 		}
 
 		writeJSON(w, http.StatusInternalServerError, analyzeResponse{
-			UploadID:      filepath.Base(tempPath),
-			FileName:      fileName,
-			EyeD3Output:   eyeD3Output,
-			SongrecOutput: songrecOutput,
-			Error:         message,
+			UploadID: uploadID,
+			FileName: fileName,
+			Error:    message,
 		})
 		return
 	}
@@ -231,11 +229,24 @@ func (s *server) analyzeUploadedFile(w http.ResponseWriter, ctx context.Context,
 
 	events.record(eventUpload, username, fileName)
 
+	SongMetaData := parseFfprobeMetadata(metadataOutput)
+	// Only set the album art URL if the song actually has artwork
+	if _, _, err := extractArtworkFromMP3(ctx, tempPath); err == nil {
+		SongMetaData.AlbumArt = fmt.Sprintf("/uploaded-audio-artwork/%s", uploadID)
+	}
+
+	// Only set the lyrics URL if the song actually has lyrics
+	if lyrics, err := extractLyricsFromMP3(ctx, tempPath); err == nil && strings.TrimSpace(lyrics) != "" {
+		SongMetaData.Lyrics = fmt.Sprintf("/uploaded-audio-lyric/%s", uploadID)
+	}
+
+	songrecMetadata := parseSongrecMetadata(songrecOutput)
+
 	writeJSON(w, http.StatusOK, analyzeResponse{
-		UploadID:      filepath.Base(tempPath),
-		FileName:      fileName,
-		EyeD3Output:   eyeD3Output,
-		SongrecOutput: songrecOutput,
+		UploadID:        uploadID,
+		FileName:        fileName,
+		SongMetadata:    SongMetaData,
+		SongrecMetadata: songrecMetadata,
 	})
 }
 
@@ -540,18 +551,19 @@ func (s *server) handleReshazam(w http.ResponseWriter, r *http.Request) {
 		}
 
 		writeJSON(w, http.StatusInternalServerError, analyzeResponse{
-			UploadID:      uploadID,
-			FileName:      filepath.Base(sourcePath),
-			SongrecOutput: songrecOutput,
-			Error:         message,
+			UploadID: uploadID,
+			FileName: filepath.Base(sourcePath),
+			Error:    message,
 		})
 		return
 	}
 
+	songrecMetadata := parseSongrecMetadata(songrecOutput)
+
 	writeJSON(w, http.StatusOK, analyzeResponse{
-		UploadID:      uploadID,
-		FileName:      filepath.Base(sourcePath),
-		SongrecOutput: songrecOutput,
+		UploadID:        uploadID,
+		FileName:        filepath.Base(sourcePath),
+		SongrecMetadata: songrecMetadata,
 	})
 }
 
@@ -677,23 +689,38 @@ func (s *server) handleConfirm(w http.ResponseWriter, r *http.Request) {
 
 	var tempArtworkPath string
 	if artworkURL := req.SelectedMetadata["album_art"]; artworkURL != "" {
-		response, err := http.Head(artworkURL)
-		contentType := ""
-		if err == nil {
-			contentType = response.Header.Get("Content-Type")
-			response.Body.Close()
-		}
+		// Check if artwork is from the uploaded file itself
+		if strings.HasPrefix(artworkURL, "/uploaded-audio-artwork/") {
+			tempArtworkPath = artworkPathForAudio(sourcePath, ".jpg")
+			if err := extractArtworkFromUploadedFile(r.Context(), sourcePath, tempArtworkPath); err != nil {
+				Errorf("extract artwork from uploaded file: %v", err)
+				writeJSON(w, http.StatusInternalServerError, confirmResponse{
+					Error: "Unable to extract the album art from the uploaded file.",
+				})
+				return
+			}
+			defer os.Remove(tempArtworkPath)
+			Debugf("extracted album art from uploaded file to %s", tempArtworkPath)
+		} else {
+			// Download artwork from internet
+			response, err := http.Head(artworkURL)
+			contentType := ""
+			if err == nil {
+				contentType = response.Header.Get("Content-Type")
+				response.Body.Close()
+			}
 
-		tempArtworkPath = artworkPathForAudio(sourcePath, detectArtworkExtension(artworkURL, contentType))
-		if err := downloadArtwork(artworkURL, tempArtworkPath); err != nil {
-			Errorf("download artwork: %v", err)
-			writeJSON(w, http.StatusInternalServerError, confirmResponse{
-				Error: "Unable to download the selected album art.",
-			})
-			return
+			tempArtworkPath = artworkPathForAudio(sourcePath, detectArtworkExtension(artworkURL, contentType))
+			if err := downloadArtwork(artworkURL, tempArtworkPath); err != nil {
+				Errorf("download artwork: %v", err)
+				writeJSON(w, http.StatusInternalServerError, confirmResponse{
+					Error: "Unable to download the selected album art.",
+				})
+				return
+			}
+			defer os.Remove(tempArtworkPath)
+			Debugf("downloaded album art to %s", tempArtworkPath)
 		}
-		defer os.Remove(tempArtworkPath)
-		Debugf("downloaded album art to %s", tempArtworkPath)
 	}
 
 	var tempLyricsPath string
@@ -839,7 +866,7 @@ func (s *server) handleCancel(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (s *server) handleUploadAudio(w http.ResponseWriter, r *http.Request) {
+func (s *server) handleUploadedAudio(w http.ResponseWriter, r *http.Request) {
 	username, ok := s.requireAuth(w, r)
 	if !ok {
 		return
@@ -939,6 +966,167 @@ func (s *server) handleSongArtwork(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", imageType)
 	w.Write(imageData)
+}
+
+func (s *server) handleUploadedAudioArtwork(w http.ResponseWriter, r *http.Request) {
+	username, ok := s.requireAuth(w, r)
+	if !ok {
+		return
+	}
+
+	if r.Method != http.MethodGet {
+		w.Header().Set("Allow", http.MethodGet)
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	uploadID := strings.TrimPrefix(r.URL.Path, "/uploaded-audio-artwork/")
+	uploadID, err := validateUploadID(uploadID)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	sourcePath := tempUploadPath(s.uploadTmpDir, username, uploadID)
+	if info, err := os.Stat(sourcePath); err != nil || info.IsDir() {
+		http.NotFound(w, r)
+		return
+	}
+
+	imageData, imageType, err := extractArtworkFromMP3(context.Background(), sourcePath)
+	if err != nil || len(imageData) == 0 {
+		Debugf("extract artwork: %v", err)
+		http.NotFound(w, r)
+		return
+	}
+
+	w.Header().Set("Content-Type", imageType)
+	w.Write(imageData)
+}
+
+func (s *server) handleUploadedAudioLyric(w http.ResponseWriter, r *http.Request) {
+	username, ok := s.requireAuth(w, r)
+	if !ok {
+		return
+	}
+
+	if r.Method != http.MethodGet {
+		w.Header().Set("Allow", http.MethodGet)
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	uploadID := strings.TrimPrefix(r.URL.Path, "/uploaded-audio-lyric/")
+	uploadID, err := validateUploadID(uploadID)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	sourcePath := tempUploadPath(s.uploadTmpDir, username, uploadID)
+	if info, err := os.Stat(sourcePath); err != nil || info.IsDir() {
+		http.NotFound(w, r)
+		return
+	}
+
+	lyrics, err := extractLyricsFromMP3(context.Background(), sourcePath)
+	if err != nil {
+		Debugf("extract lyrics: %v", err)
+		http.NotFound(w, r)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.Write([]byte(lyrics))
+}
+
+func (s *server) handleDeleteSong(w http.ResponseWriter, r *http.Request) {
+	username, ok := s.requireAuth(w, r)
+	if !ok {
+		return
+	}
+
+	if r.Method != http.MethodDelete {
+		w.Header().Set("Allow", http.MethodDelete)
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Get the relative path from query parameter
+	relativePath := r.URL.Query().Get("path")
+	if relativePath == "" {
+		http.Error(w, "missing path parameter", http.StatusBadRequest)
+		return
+	}
+
+	// Validate the path is safe and get the absolute path in upload directory
+	uploadPath, err := safeUploadSongPath(s.uploadDir, relativePath)
+	if err != nil {
+		http.Error(w, "invalid song path", http.StatusBadRequest)
+		return
+	}
+
+	// Verify the song is in the user's directory (security check)
+	userDir := filepath.Join(s.uploadDir, userPathPart(username))
+	absUserDir, err := filepath.Abs(userDir)
+	if err != nil {
+		http.Error(w, "invalid user directory", http.StatusInternalServerError)
+		return
+	}
+
+	absUploadPath, err := filepath.Abs(uploadPath)
+	if err != nil {
+		http.Error(w, "invalid path", http.StatusInternalServerError)
+		return
+	}
+
+	// Check if the song is within the user's directory
+	if !strings.HasPrefix(absUploadPath, absUserDir+string(filepath.Separator)) {
+		http.Error(w, "forbidden: cannot delete songs from other users", http.StatusForbidden)
+		return
+	}
+
+	// Check if file exists
+	info, err := os.Stat(uploadPath)
+	if err != nil || info.IsDir() {
+		http.NotFound(w, r)
+		return
+	}
+
+	// Create deleted directory path with same relative structure
+	relativeToUserDir, err := filepath.Rel(absUserDir, absUploadPath)
+	if err != nil {
+		http.Error(w, "invalid path", http.StatusInternalServerError)
+		return
+	}
+
+	deletedPath := filepath.Join(s.deletedDir, userPathPart(username), relativeToUserDir)
+
+	// Create deleted directory structure if needed
+	if err := os.MkdirAll(filepath.Dir(deletedPath), 0o755); err != nil {
+		Errorf("create deleted song directory: %v", err)
+		http.Error(w, "unable to delete song", http.StatusInternalServerError)
+		return
+	}
+
+	// Move the file to deleted directory
+	if err := os.Rename(uploadPath, deletedPath); err != nil {
+		Errorf("move song to deleted directory: %v", err)
+		http.Error(w, "unable to delete song", http.StatusInternalServerError)
+		return
+	}
+
+	// Delete the song from the database
+	if err := s.songs.deleteByPath(uploadPath); err != nil {
+		Errorf("delete song from database: %v", err)
+		// Log the error but don't fail the request - file is already moved
+		Warnf("song file deleted but database entry may still exist for %s", relativePath)
+	}
+
+	Infof("song deleted by user %q: %s", username, relativePath)
+	s.events.record(eventDeleteSong, username, relativePath)
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"message": "song deleted successfully"})
 }
 
 func safeUploadSongPath(uploadDir string, relativePath string) (string, error) {

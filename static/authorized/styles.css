@@ -552,6 +552,60 @@ h1 {
   font-variant-numeric: tabular-nums;
 }
 
+.library-download-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+.library-download-btn img {
+  height: 80%;
+  width: auto;
+  max-height: 48px;
+  opacity: 0.8;
+  transition: opacity 0.2s;
+}
+
+.library-download-btn:hover img {
+  opacity: 1;
+}
+
+.library-delete-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+.library-delete-btn img {
+  height: 50%;
+  width: auto;
+  max-height: 32px;
+  opacity: 0.8;
+  transition: opacity 0.2s;
+}
+
+.library-delete-btn:hover img {
+  opacity: 1;
+}
+
+.library-table td:has(.library-delete-btn),
+.library-table td:has(.library-download-btn) {
+  vertical-align: middle;
+  padding: 0;
+}
+
 /* Keep every events column on one line; only the info cell (.event-info) wraps. */
 #events-table-wrap td {
   white-space: nowrap;
@@ -899,9 +953,11 @@ h1 {
 
 .result-art {
   display: block;
-  width: 120px;
+  width: 100%;
+  height: auto;
   max-width: 100%;
   border-radius: 12px;
+  object-fit: contain;
 }
 
 .clickable-value-cell {

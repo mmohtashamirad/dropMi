@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -158,6 +159,32 @@ func downloadArtwork(url string, destinationPath string) error {
 		os.Remove(destinationPath)
 		return fmt.Errorf("download artwork with wget: %w", err)
 	}
+	return nil
+}
+
+func extractArtworkFromUploadedFile(ctx context.Context, uploadedFilePath string, destinationPath string) error {
+	imageData, imageType, err := extractArtworkFromMP3(ctx, uploadedFilePath)
+	if err != nil {
+		return fmt.Errorf("extract artwork from MP3: %w", err)
+	}
+
+	// Determine file extension from image type
+	ext := ".jpg"
+	if imageType == "image/png" {
+		ext = ".png"
+	} else if imageType == "image/webp" {
+		ext = ".webp"
+	}
+
+	// Update destination path with correct extension
+	destDir := filepath.Dir(destinationPath)
+	destBase := strings.TrimSuffix(filepath.Base(destinationPath), filepath.Ext(destinationPath))
+	destinationPath = filepath.Join(destDir, destBase+ext)
+
+	if err := os.WriteFile(destinationPath, imageData, 0o600); err != nil {
+		return fmt.Errorf("write artwork file: %w", err)
+	}
+
 	return nil
 }
 

@@ -199,6 +199,8 @@ function createSongRow(song) {
   row.appendChild(createTextCell(song.language));
   row.appendChild(createTextCell(formatDuration(song.duration), "library-duration"));
   row.appendChild(createFileCell(song));
+  row.appendChild(createDeleteCell(song));
+  row.appendChild(createDownloadCell(song));
   return row;
 }
 
@@ -281,6 +283,80 @@ function createFileCell(song) {
   }
 
   cell.appendChild(file);
+  return cell;
+}
+
+function createDeleteCell(song) {
+  const cell = document.createElement("td");
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "library-delete-btn";
+  button.title = `Delete ${song.fileName || "song"}`;
+
+  const img = document.createElement("img");
+  img.src = "/authorized/delete.png";
+  img.alt = "Delete";
+  button.appendChild(img);
+
+  button.addEventListener("click", async (e) => {
+    e.stopPropagation();
+    const confirmed = confirm(`Are you sure you want to delete "${song.fileName || "this song"}"?`);
+    if (!confirmed) {
+      return;
+    }
+
+    if (song.path) {
+      const path = song.path.split("/").slice(-3).join("/");
+      try {
+        const response = await fetch(`/delete-song?${new URLSearchParams({ path: path }).toString()}`, {
+          method: "DELETE"
+        });
+
+        if (response.ok) {
+          // Remove the row from the table
+          const row = button.closest("tr");
+          if (row) {
+            row.remove();
+          }
+        } else {
+          alert("Failed to delete song: " + (await response.text()));
+        }
+      } catch (error) {
+        alert("Error deleting song: " + error.message);
+      }
+    }
+  });
+
+  cell.appendChild(button);
+  return cell;
+}
+
+function createDownloadCell(song) {
+  const cell = document.createElement("td");
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "library-download-btn";
+  button.title = `Download ${song.fileName || "song"}`;
+
+  const img = document.createElement("img");
+  img.src = "/authorized/download.png";
+  img.alt = "Download";
+  button.appendChild(img);
+
+  button.addEventListener("click", () => {
+    if (song.path) {
+      const path = song.path.split("/").slice(-3).join("/");
+      const url = `/song?${new URLSearchParams({ path: path }).toString()}`;
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = song.fileName || "dropMi.mp3";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  });
+
+  cell.appendChild(button);
   return cell;
 }
 

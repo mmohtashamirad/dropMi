@@ -26,16 +26,40 @@ func configureMusicTools(rootPath string, mountPoint string, dbPath string) {
 	songsDBPath = dbPath
 }
 
-func runEyeD3(parent context.Context, filePath string) (string, error) {
-	return runMusicToolsCommand(
-		parent,
-		filePath,
-		"eyeD3",
-		"--plugin",
-		"json",
-		"--no-color",
-		"--no-config",
+func ExtractSongMetaData(parent context.Context, filePath string) (string, error) {
+	ctx, cancel := context.WithTimeout(parent, 30*time.Second)
+	defer cancel()
+
+	musicToolsFilePath, err := musicToolsPath(filePath)
+	if err != nil {
+		return "", err
+	}
+
+	cmd := exec.CommandContext(ctx, "docker", "exec", musicToolsContainerName, "ffprobe",
+		"-v", "quiet",
+		"-print_format", "json",
+		"-show_format",
+		"-show_streams",
+		musicToolsFilePath,
 	)
+
+	Debugf("running command: %q", cmd.Args)
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	err = cmd.Run()
+	if err != nil {
+		stderrText := strings.TrimSpace(stderr.String())
+		if stderrText != "" {
+			Debugf("ffprobe stderr: %s", stderrText)
+		}
+		return "", err
+	}
+
+	return stdout.String(), nil
 }
 
 func runSongPreProcess(parent context.Context, filePath string) (string, error) {
