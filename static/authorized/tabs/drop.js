@@ -304,7 +304,7 @@ export function initTab() {
             uploadId: currentUploadId,
             songrecOutput: result.payload.songrecOutput || ""
           };
-      updateSongrecResult(currentResultPayload.songrecOutput);
+      showResult(currentResultPayload, false);
       fillLyricsSearchInput();
       maybeStartLyricsSearch();
     }
