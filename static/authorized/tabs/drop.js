@@ -26,7 +26,7 @@ import {
   setDraggingState,
   showScreen
 } from "/authorized/screen-ui.js";
-import { beaconCancelUpload, cancelUpload, confirmUpload, findDuplicates, reShazam, uploadFile, uploadInternetSong } from "/authorized/upload-client.js";
+import { beaconCancelUpload, cancelUpload, confirmUpload, findDuplicates, reShazam, uploadFile, uploadInternetSong, uploadLibrarySong } from "/authorized/upload-client.js";
 import {
   lyricsState,
   resetLyricsState,
@@ -83,6 +83,11 @@ window.addEventListener("pagehide", () => {
 let pendingInternetSongFilename = null;
 document.addEventListener("internet-song-dropmi", (event) => {
   pendingInternetSongFilename = event.detail?.filename || null;
+});
+
+let pendingLibrarySongPath = null;
+document.addEventListener("library-song-edit", (event) => {
+  pendingLibrarySongPath = event.detail?.path || null;
 });
 
 function persistSnapshot(snapshot) {
@@ -360,7 +365,11 @@ export function initTab() {
   // and ignore any stored snapshot. Otherwise restore a same-session snapshot
   // (kept in memory, includes the file queue), else a result persisted to
   // localStorage on a previous visit (within 12h).
-  if (pendingInternetSongFilename) {
+  if (pendingLibrarySongPath) {
+    const path = pendingLibrarySongPath;
+    pendingLibrarySongPath = null;
+    startLibrarySongEdit(path);
+  } else if (pendingInternetSongFilename) {
     const filename = pendingInternetSongFilename;
     pendingInternetSongFilename = null;
     startInternetSongUpload(filename);
@@ -493,7 +502,7 @@ function processNextFile() {
 }
 
 
-function startUpload(source, isInternetSong = false) {
+function startUpload(source, isInternetSong = false, isLibrarySong = false) {
   updateQueueStatus();
   const callbacks = {
     async onSuccess(payload) {
@@ -504,9 +513,9 @@ function startUpload(source, isInternetSong = false) {
       lyricsState.currentOptions = payload.lyricsOptions || [];
       const hasUploadedLyrics = await addUploadedFileLyricsToOptions(payload);
       updateQueueStatus();
-      // Internet songs have no local File, so load the audio from the server by
+      // Internet and library songs have no local File, so load the audio from the server by
       // uploadId — the same way a page reload restores the player.
-      if (isInternetSong && currentUploadId) {
+      if ((isInternetSong || isLibrarySong) && currentUploadId) {
         elements.audioPlayer.player.src = `/uploaded-audio?${new URLSearchParams({ uploadId: currentUploadId }).toString()}`;
         elements.audioPlayer.player.load();
       }
@@ -555,7 +564,9 @@ function startUpload(source, isInternetSong = false) {
     }
   };
 
-  if (isInternetSong) {
+  if (isLibrarySong) {
+    uploadLibrarySong(source, callbacks);
+  } else if (isInternetSong) {
     uploadInternetSong(source, callbacks);
   } else {
     activeUpload = uploadFile(source, callbacks);
@@ -570,6 +581,14 @@ function startInternetSongUpload(filename) {
   resetUploadScreen();
   elements.lyricsSearchInput.value = "";
   startUpload(filename, true);
+}
+
+function startLibrarySongEdit(path) {
+  clearStoredResult();
+  resetResultScreen();
+  resetUploadScreen();
+  elements.lyricsSearchInput.value = "";
+  startUpload(path, false, true);
 }
 
 function finishResultAction() {

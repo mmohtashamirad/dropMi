@@ -199,6 +199,7 @@ function createSongRow(song) {
   row.appendChild(createTextCell(song.language));
   row.appendChild(createTextCell(formatDuration(song.duration), "library-duration"));
   row.appendChild(createFileCell(song));
+  row.appendChild(createEditCell(song));
   row.appendChild(createDeleteCell(song));
   row.appendChild(createDownloadCell(song));
   return row;
@@ -290,7 +291,7 @@ function createDeleteCell(song) {
   const cell = document.createElement("td");
   const button = document.createElement("button");
   button.type = "button";
-  button.className = "library-delete-btn";
+  button.className = "library-action-btn small-icon";
   button.title = `Delete ${song.fileName || "song"}`;
 
   const img = document.createElement("img");
@@ -331,11 +332,43 @@ function createDeleteCell(song) {
   return cell;
 }
 
+function createEditCell(song) {
+  const cell = document.createElement("td");
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "library-action-btn small-icon";
+  button.title = `Edit ${song.fileName || "song"}`;
+
+  const img = document.createElement("img");
+  img.src = "/authorized/edit.png";
+  img.alt = "Edit";
+  button.appendChild(img);
+
+  button.addEventListener("click", async (e) => {
+    e.stopPropagation();
+    if (song.path) {
+      const path = song.path.split("/").slice(-3).join("/");
+      const dropTabButton = document.getElementById("tab-drop");
+      if (dropTabButton) {
+        dropTabButton.click();
+      }
+      setTimeout(() => {
+        document.dispatchEvent(
+          new CustomEvent("library-song-edit", { detail: { path } })
+        );
+      }, 0);
+    }
+  });
+
+  cell.appendChild(button);
+  return cell;
+}
+
 function createDownloadCell(song) {
   const cell = document.createElement("td");
   const button = document.createElement("button");
   button.type = "button";
-  button.className = "library-download-btn";
+  button.className = "library-action-btn large-icon";
   button.title = `Download ${song.fileName || "song"}`;
 
   const img = document.createElement("img");

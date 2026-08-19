@@ -96,6 +96,43 @@ export async function uploadInternetSong(filename, callbacks) {
   }
 }
 
+// Like uploadInternetSong, but the song already lives in the user's library,
+// so we call /edit-song instead. Shows upload screen and runs the same flow.
+export async function uploadLibrarySong(path, callbacks) {
+  showScreen(elements.uploadScreen);
+  const fileName = path.split("/").pop() || path;
+  elements.uploadFileName.textContent = `Loading ${fileName}`;
+  setProgress(0);
+
+  try {
+    const result = await postJSON(
+      `/edit-song?${new URLSearchParams({ path }).toString()}`,
+      null,
+      "The upload or analysis failed."
+    );
+
+    setProgress(100);
+
+    if (result.ok) {
+      callbacks.onSuccess(result.payload);
+      return;
+    }
+
+    callbacks.onError({
+      fileName: fileName,
+      output: "",
+      error: result.error || "The upload or analysis failed."
+    });
+  } catch {
+    setProgress(100);
+    callbacks.onError({
+      fileName: fileName,
+      output: "",
+      error: "The browser could not reach the server."
+    });
+  }
+}
+
 function trimSelectedMetadata(selectedMetadata) {
   const trimmed = {};
   if (!selectedMetadata) {

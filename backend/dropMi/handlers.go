@@ -301,6 +301,30 @@ func (s *server) handleUpload(w http.ResponseWriter, r *http.Request) {
 	s.analyzeUploadedFile(w, r.Context(), tempPath, header.Filename, username, s.events)
 }
 
+func (s *server) copyAndAnalyzeSong(w http.ResponseWriter, r *http.Request, sourcePath, fileName, username string) {
+	tempDir := tempUserDir(s.uploadTmpDir, username)
+	tempFile, tempPath, err := createTempUploadFile(tempDir, fileName)
+	if err != nil {
+		Errorf("create temp file: %v", err)
+		writeJSON(w, http.StatusInternalServerError, analyzeResponse{
+			Error: "Unable to prepare the upload for analysis.",
+		})
+		return
+	}
+	tempFile.Close()
+
+	if err := copyFile(sourcePath, tempPath); err != nil {
+		Errorf("copy file: %v", err)
+		writeJSON(w, http.StatusInternalServerError, analyzeResponse{
+			Error: "Unable to copy the file for analysis.",
+		})
+		return
+	}
+
+	Debugf("copied song to %s", tempPath)
+	s.analyzeUploadedFile(w, r.Context(), tempPath, fileName, username, s.events)
+}
+
 func (s *server) handleUploadInternetSong(w http.ResponseWriter, r *http.Request) {
 	username, ok := s.requireAuth(w, r)
 	if !ok {
@@ -351,30 +375,7 @@ func (s *server) handleUploadInternetSong(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// Create a temp file path
-	tempDir := tempUserDir(s.uploadTmpDir, username)
-	tempFile, tempPath, err := createTempUploadFile(tempDir, filename)
-	if err != nil {
-		Errorf("create temp file: %v", err)
-		writeJSON(w, http.StatusInternalServerError, analyzeResponse{
-			Error: "Unable to prepare the upload for analysis.",
-		})
-		return
-	}
-	tempFile.Close()
-
-	// Copy the cached file to temp location
-	if err := copyFile(cachedFilePath, tempPath); err != nil {
-		Errorf("copy cached file: %v", err)
-		writeJSON(w, http.StatusInternalServerError, analyzeResponse{
-			Error: "Unable to copy the file for analysis.",
-		})
-		return
-	}
-
-	Debugf("moved internet song to %s", tempPath)
-
-	s.analyzeUploadedFile(w, r.Context(), tempPath, filename, username, s.events)
+	s.copyAndAnalyzeSong(w, r, cachedFilePath, filename, username)
 }
 
 func (s *server) handleFindDuplicates(w http.ResponseWriter, r *http.Request) {
@@ -1127,6 +1128,77 @@ func (s *server) handleDeleteSong(w http.ResponseWriter, r *http.Request) {
 	s.events.record(eventDeleteSong, username, relativePath)
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]string{"message": "song deleted successfully"})
+}
+
+func (s *server) handleEditSong(w http.ResponseWriter, r *http.Request) {
+	username, ok := s.requireAuth(w, r)
+	if !ok {
+		return
+	}
+
+	if r.Method != http.MethodPost {
+		w.Header().Set("Allow", http.MethodPost)
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Get the relative path from query parameter
+	relativePath := r.URL.Query().Get("path")
+	if relativePath == "" {
+		writeJSON(w, http.StatusBadRequest, analyzeResponse{
+			Error: "missing path parameter",
+		})
+		return
+	}
+
+	// Validate the path is safe and get the absolute path in upload directory
+	uploadPath, err := safeUploadSongPath(s.uploadDir, relativePath)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, analyzeResponse{
+			Error: "invalid song path",
+		})
+		return
+	}
+
+	// Verify the song is in the user's directory (security check)
+	userDir := filepath.Join(s.uploadDir, userPathPart(username))
+	absUserDir, err := filepath.Abs(userDir)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, analyzeResponse{
+			Error: "invalid user directory",
+		})
+		return
+	}
+
+	absUploadPath, err := filepath.Abs(uploadPath)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, analyzeResponse{
+			Error: "invalid path",
+		})
+		return
+	}
+
+	// Check if the song is within the user's directory
+	if !strings.HasPrefix(absUploadPath, absUserDir+string(filepath.Separator)) {
+		writeJSON(w, http.StatusForbidden, analyzeResponse{
+			Error: "forbidden: cannot edit songs from other users",
+		})
+		return
+	}
+
+	// Check if file exists
+	info, err := os.Stat(uploadPath)
+	if err != nil || info.IsDir() {
+		writeJSON(w, http.StatusNotFound, analyzeResponse{
+			Error: "song file not found",
+		})
+		return
+	}
+
+	Infof("edit song request for %q from %q", relativePath, username)
+
+	fileName := filepath.Base(uploadPath)
+	s.copyAndAnalyzeSong(w, r, uploadPath, fileName, username)
 }
 
 func safeUploadSongPath(uploadDir string, relativePath string) (string, error) {
