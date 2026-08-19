@@ -174,8 +174,23 @@ export function initTab() {
     actions.appendChild(dropmiBtn);
   }
 
+  function disableAllDownloadButtons() {
+    const allDownloadButtons = document.querySelectorAll(".search-internet-download-btn");
+    allDownloadButtons.forEach(btn => {
+      btn.disabled = true;
+    });
+  }
+
+  function enableAllDownloadButtons() {
+    const allDownloadButtons = document.querySelectorAll(".search-internet-download-btn");
+    allDownloadButtons.forEach(btn => {
+      btn.disabled = false;
+    });
+  }
+
   async function handleDownload(item, downloadBtn, actions) {
-    downloadBtn.disabled = true;
+    searchStatus.hidden = true;
+    disableAllDownloadButtons();
     downloadBtn.textContent = "Downloading...";
 
     try {
@@ -186,17 +201,18 @@ export function initTab() {
       );
 
       if (!result.ok) {
-        showStatus(result.error || "Download failed.", "error");
-        downloadBtn.disabled = false;
+        showErrorWithResults(result.error || "Download failed.");
         downloadBtn.textContent = "Download";
+        enableAllDownloadButtons();
         return;
       }
 
       renderDownloaded(actions, item, result.payload.filename);
+      enableAllDownloadButtons();
     } catch (error) {
-      showStatus(`Error: ${error.message}`, "error");
-      downloadBtn.disabled = false;
+      showErrorWithResults(`Error: ${error.message}`);
       downloadBtn.textContent = "Download";
+      enableAllDownloadButtons();
     }
   }
 
@@ -232,6 +248,14 @@ export function initTab() {
     searchStatus.className = `search-internet-status ${type}`;
     searchStatus.textContent = message;
     searchResults.hidden = true;
+  }
+
+  function showErrorWithResults(message) {
+    searchStatus.hidden = false;
+    searchStatus.className = "search-internet-status error";
+    searchStatus.textContent = message;
+    searchResults.hidden = false;
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   return {};
